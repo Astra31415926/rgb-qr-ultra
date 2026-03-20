@@ -3,590 +3,174 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RGB Triple QR System</title>
+    <title>RGB QR Ultra — Spectral Art</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;600;800&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg: #050505;
-            --surface: #0f0f0f;
-            --border: #1f1f1f;
-            --text: #e0e0e0;
-            --muted: #666;
-            
-            --r-channel: #ff2a2a;
-            --g-channel: #2aff2a;
-            --b-channel: #2a9fff;
-            
-            --r-glow: rgba(255, 42, 42, 0.3);
-            --g-glow: rgba(42, 255, 42, 0.3);
-            --b-glow: rgba(42, 159, 255, 0.3);
-        }
-
-        body {
-            font-family: 'Outfit', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        .font-mono {
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        /* Atmosphere */
-        .bg-grid {
-            position: fixed;
-            inset: 0;
-            background-image: 
-                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-            background-size: 40px 40px;
-            mask-image: radial-gradient(ellipse at center, black 30%, transparent 70%);
-            z-index: -2;
-        }
-
-        .bg-glow {
-            position: fixed;
-            inset: 0;
-            z-index: -1;
-            background: 
-                radial-gradient(circle at 20% 30%, var(--r-glow) 0%, transparent 40%),
-                radial-gradient(circle at 80% 30%, var(--g-glow) 0%, transparent 40%),
-                radial-gradient(circle at 50% 80%, var(--b-glow) 0%, transparent 40%);
-            opacity: 0.4;
-            filter: blur(80px);
-        }
-
-        /* Card styling */
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-        }
-
-        /* Input styling */
-        .input-rgb {
-            background: rgba(0, 0, 0, 0.6);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 12px;
-            color: var(--text);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 14px;
-            width: 100%;
-            transition: all 0.2s ease;
-        }
-
-        .input-rgb:focus {
-            outline: none;
-            background: rgba(0, 0, 0, 0.8);
-        }
-
-        .input-r:focus { border-color: var(--r-channel); box-shadow: 0 0 10px var(--r-glow); }
-        .input-g:focus { border-color: var(--g-channel); box-shadow: 0 0 10px var(--g-glow); }
-        .input-b:focus { border-color: var(--b-channel); box-shadow: 0 0 10px var(--b-glow); }
-
-        /* Button */
-        .btn-generate {
-            background: linear-gradient(135deg, #fff 0%, #ccc 100%);
-            color: #000;
-            font-weight: 700;
-            padding: 14px 24px;
-            border-radius: 8px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
-            border: none;
-            cursor: pointer;
-        }
-
-        .btn-generate:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(255, 255, 255, 0.2);
-        }
-
-        /* QR Display */
-        .qr-display-wrapper {
-            position: relative;
-            background: #000;
-            border-radius: 8px;
-            overflow: hidden;
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #qr-canvas {
-            image-rendering: pixelated; /* CSS sharp rendering */
-            image-rendering: crisp-edges;
-            max-width: 100%;
-            height: auto;
-        }
-
-        /* Scanner styles */
-        .scanner-video {
-            width: 100%;
-            border-radius: 8px;
-            background: #000;
-            transform: scaleX(-1); /* Mirror for selfie cam usually */
-        }
-
-        .result-grid {
-            display: grid;
-            gap: 12px;
-        }
-
-        .result-item {
-            padding: 12px;
-            border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-            word-break: break-all;
-        }
-
-        .result-r { background: rgba(255, 42, 42, 0.1); border: 1px solid var(--r-channel); color: var(--r-channel); }
-        .result-g { background: rgba(42, 255, 42, 0.1); border: 1px solid var(--g-channel); color: var(--g-channel); }
-        .result-b { background: rgba(42, 159, 255, 0.1); border: 1px solid var(--b-channel); color: var(--b-channel); }
-
-        /* Tabs */
-        .tab-btn {
-            padding: 10px 20px;
-            background: transparent;
-            border: none;
-            color: var(--muted);
-            font-family: 'Outfit', sans-serif;
-            font-weight: 600;
-            cursor: pointer;
-            border-bottom: 2px solid transparent;
-            transition: all 0.2s ease;
-        }
-
-        .tab-btn.active {
-            color: var(--text);
-            border-bottom-color: var(--text);
-        }
-
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-in {
-            animation: fadeIn 0.5s ease forwards;
-        }
-
-        /* Status indicator */
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--muted);
-        }
-
-        .status-dot.active {
-            background: var(--g-channel);
-            box-shadow: 0 0 10px var(--g-channel);
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
+        :root { --bg: #050505; --surface: #0f0f0f; --border: #1f1f1f; --text: #e0e0e0; --r-channel: #ff2a2a; --g-channel: #2aff2a; --b-channel: #2a9fff; }
+        body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; }
+        .input-rgb { background: rgba(0, 0, 0, 0.6); border: 1px solid var(--border); border-radius: 6px; padding: 10px; color: #fff; width: 100%; font-family: 'JetBrains Mono'; }
+        canvas { image-rendering: pixelated; max-width: 100%; height: auto; }
+        .hidden { display: none; }
+        .result-item { padding: 10px; border-radius: 6px; margin-bottom: 8px; font-family: 'JetBrains Mono'; font-size: 13px; }
+        .res-r { border: 1px solid var(--r-channel); color: var(--r-channel); }
+        .res-g { border: 1px solid var(--g-channel); color: var(--g-channel); }
+        .res-b { border: 1px solid var(--b-channel); color: var(--b-channel); }
     </style>
 </head>
-<body class="min-h-screen p-4 md:p-8">
-    <div class="bg-grid"></div>
-    <div class="bg-glow"></div>
+<body class="p-4 md:p-8">
 
-    <div class="max-w-4xl mx-auto">
-        <!-- Header -->
-        <header class="text-center mb-12 animate-in">
-            <h1 class="text-4xl md:text-5xl font-extrabold mb-2 tracking-tight">
-                <span style="color: var(--r-channel)">R</span><span style="color: var(--g-channel)">G</span><span style="color: var(--b-channel)">B</span> QR System
-            </h1>
-            <p class="text-sm" style="color: var(--muted)">Triple Channel Data Encoding</p>
-        </header>
+<div class="max-w-4xl mx-auto">
+    <header class="text-center mb-10">
+        <h1 class="text-4xl font-black uppercase tracking-tighter">
+            <span style="color:var(--r-channel)">R</span><span style="color:var(--g-channel)">G</span><span style="color:var(--b-channel)">B</span> QR ULTRA
+        </h1>
+    </header>
 
-        <!-- Tabs -->
-        <div class="flex border-b mb-6" style="border-color: var(--border)">
-            <button class="tab-btn active" data-tab="create">Создать</button>
-            <button class="tab-btn" data-tab="scan">Сканировать</button>
+    <div class="grid md:grid-cols-2 gap-8 mb-12">
+        <div class="space-y-4">
+            <div class="card p-4"><label class="text-xs font-bold" style="color:var(--r-channel)">RED</label><textarea id="in-r" class="input-rgb" rows="1"></textarea></div>
+            <div class="card p-4"><label class="text-xs font-bold" style="color:var(--g-channel)">GREEN</label><textarea id="in-g" class="input-rgb" rows="1"></textarea></div>
+            <div class="card p-4"><label class="text-xs font-bold" style="color:var(--b-channel)">BLUE</label><textarea id="in-b" class="input-rgb" rows="1"></textarea></div>
+            <button id="gen-btn" class="w-full bg-white text-black font-bold py-3 rounded-lg hover:invert transition">ГЕНЕРИРОВАТЬ</button>
         </div>
-
-        <!-- CREATE TAB -->
-        <div id="tab-create" class="tab-content">
-            <div class="grid md:grid-cols-2 gap-6">
-                <!-- Input Section -->
-                <div class="space-y-4">
-                    <div class="card p-4" style="border-left: 3px solid var(--r-channel)">
-                        <label class="block text-xs uppercase tracking-wider mb-2 font-bold" style="color: var(--r-channel)">Red Channel</label>
-                        <textarea id="input-red" class="input-rgb input-r" rows="2" placeholder="Данные для красного канала..."></textarea>
-                    </div>
-                    
-                    <div class="card p-4" style="border-left: 3px solid var(--g-channel)">
-                        <label class="block text-xs uppercase tracking-wider mb-2 font-bold" style="color: var(--g-channel)">Green Channel</label>
-                        <textarea id="input-green" class="input-rgb input-g" rows="2" placeholder="Данные для зеленого канала..."></textarea>
-                    </div>
-                    
-                    <div class="card p-4" style="border-left: 3px solid var(--b-channel)">
-                        <label class="block text-xs uppercase tracking-wider mb-2 font-bold" style="color: var(--b-channel)">Blue Channel</label>
-                        <textarea id="input-blue" class="input-rgb input-b" rows="2" placeholder="Данные для синего канала..."></textarea>
-                    </div>
-
-                    <button id="btn-generate" class="btn-generate w-full">
-                        Сгенерировать RGB QR
-                    </button>
-                </div>
-
-                <!-- Output Section -->
-                <div>
-                    <div class="qr-display-wrapper" id="qr-container">
-                        <div class="text-center p-8" style="color: var(--muted)">
-                            <svg width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" class="mx-auto mb-4 opacity-50">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
-                            </svg>
-                            <p class="text-sm">Введите данные в каналы</p>
-                        </div>
-                        <canvas id="qr-canvas" class="hidden"></canvas>
-                    </div>
-                    
-                    <div class="mt-4 flex gap-2">
-                        <button id="btn-download" class="flex-1 py-3 px-4 rounded-lg font-bold text-sm border transition hover:border-white" style="border-color: var(--border);">
-                            Скачать PNG
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- SCAN TAB -->
-        <div id="tab-scan" class="tab-content hidden">
-            <div class="grid md:grid-cols-2 gap-6">
-                <!-- Camera Section -->
-                <div>
-                    <div class="card p-4 mb-4">
-                        <div class="flex items-center justify-between mb-4">
-                            <div class="flex items-center gap-2">
-                                <div id="status-dot" class="status-dot"></div>
-                                <span class="text-sm font-mono" id="status-text">Камера выключена</span>
-                            </div>
-                            <button id="btn-camera" class="text-sm py-2 px-4 rounded border transition hover:border-white" style="border-color: var(--border);">
-                                Включить
-                            </button>
-                        </div>
-                        <video id="video" class="scanner-video hidden" playsinline></video>
-                        <canvas id="scan-canvas" class="hidden"></canvas>
-                        <div id="camera-placeholder" class="aspect-video flex items-center justify-center rounded" style="background: var(--surface);">
-                            <p class="text-sm" style="color: var(--muted)">Нажмите "Включить"</p>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Results Section -->
-                <div>
-                    <h3 class="font-bold mb-4 text-lg">Результаты сканирования</h3>
-                    <div class="result-grid">
-                        <div class="result-item result-r">
-                            <div class="text-xs uppercase opacity-60 mb-1">Red Channel</div>
-                            <div id="res-red">Ожидание...</div>
-                        </div>
-                        <div class="result-item result-g">
-                            <div class="text-xs uppercase opacity-60 mb-1">Green Channel</div>
-                            <div id="res-green">Ожидание...</div>
-                        </div>
-                        <div class="result-item result-b">
-                            <div class="text-xs uppercase opacity-60 mb-1">Blue Channel</div>
-                            <div id="res-blue">Ожидание...</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        <div class="card flex flex-col items-center justify-center p-4 bg-black min-h-[300px]">
+            <canvas id="qr-canvas" class="hidden"></canvas>
+            <button id="dl-btn" class="hidden mt-4 text-xs border border-white px-4 py-2 rounded">СКАЧАТЬ PNG</button>
         </div>
     </div>
 
-    <script>
-        // ============================================
-        // DOM Elements
-        // ============================================
-        const els = {
-            btnGen: document.getElementById('btn-generate'),
-            btnCam: document.getElementById('btn-camera'),
-            btnDl: document.getElementById('btn-download'),
-            inputR: document.getElementById('input-red'),
-            inputG: document.getElementById('input-green'),
-            inputB: document.getElementById('input-blue'),
-            canvas: document.getElementById('qr-canvas'),
-            video: document.getElementById('video'),
-            scanCanvas: document.getElementById('scan-canvas'),
-            container: document.getElementById('qr-container'),
-            statusDot: document.getElementById('status-dot'),
-            statusText: document.getElementById('status-text'),
-            placeholder: document.getElementById('camera-placeholder'),
-            resR: document.getElementById('res-red'),
-            resG: document.getElementById('res-green'),
-            resB: document.getElementById('res-blue'),
-            tabBtns: document.querySelectorAll('.tab-btn'),
-            tabContents: document.querySelectorAll('.tab-content')
-        };
+    <div class="grid md:grid-cols-2 gap-8">
+        <div class="card p-4">
+            <h3 class="font-bold mb-4 uppercase text-sm">Сканер / Декодер</h3>
+            <div class="flex gap-2 mb-4">
+                <button id="cam-btn" class="flex-1 bg-zinc-800 py-2 rounded text-xs font-bold">ВКЛ КАМЕРУ</button>
+                <button id="file-btn" class="flex-1 bg-zinc-800 py-2 rounded text-xs font-bold">ЗАГРУЗИТЬ ФОТО</button>
+                <input type="file" id="file-input" accept="image/*" class="hidden">
+            </div>
+            <video id="video" class="hidden w-full rounded" playsinline></video>
+            <canvas id="scan-canvas" class="hidden"></canvas>
+            <div id="cam-idle" class="aspect-video bg-zinc-900 rounded flex items-center justify-center text-xs text-zinc-500">Камера или файл не выбраны</div>
+        </div>
+        <div>
+            <h3 class="font-bold mb-4 uppercase text-sm">Результат расшифровки</h3>
+            <div id="res-r" class="result-item res-r italic">RED: ожидание...</div>
+            <div id="res-g" class="result-item res-g italic">GREEN: ожидание...</div>
+            <div id="res-b" class="result-item res-b italic">BLUE: ожидание...</div>
+        </div>
+    </div>
+</div>
 
-        // ============================================
-        // State
-        // ============================================
-        let stream = null;
-        let scanLoop = null;
-        let lastResults = { r: null, g: null, b: null };
+<script>
+    const $ = id => document.getElementById(id);
+    let stream = null;
 
-        // ============================================
-        // Tab Switching
-        // ============================================
-        els.tabBtns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                els.tabBtns.forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
-                
-                els.tabContents.forEach(c => c.classList.add('hidden'));
-                document.getElementById(`tab-${btn.dataset.tab}`).classList.remove('hidden');
-            });
+    // ГЕНЕРАЦИЯ (Синхронная сетка)
+    $('gen-btn').onclick = () => {
+        const texts = [$('in-r').value || " ", $('in-g').value || " ", $('in-b').value || " "];
+        let maxVer = 1;
+        texts.forEach(t => {
+            const q = qrcode(0, 'M'); q.addData(t); q.make();
+            maxVer = Math.max(maxVer, (q.getModuleCount()-17)/4);
         });
 
-        // ============================================
-        // CORE LOGIC: Pixel Perfect Generation
-        // ============================================
-        function getQRVersion(text) {
-            if (!text) return 0;
-            // Rough estimation of version based on length for alphanumeric
-            // We use the library's auto-detection but force a minimum version later if needed
-            // Forcing synchronization requires manual version control.
-            // Here we let the library pick for the longest text, then reuse that version.
-            return 0; // 0 = auto
-        }
+        const qrs = texts.map(t => { 
+            const q = qrcode(maxVer, 'M'); q.addData(t); q.make(); return q; 
+        });
 
-        function generateTripleQR() {
-            const textR = els.inputR.value.trim();
-            const textG = els.inputG.value.trim();
-            const textB = els.inputB.value.trim();
+        const modCount = qrs[0].getModuleCount();
+        const modSize = 10;
+        const margin = 2;
+        const size = (modCount + margin * 2) * modSize;
+        const canvas = $('qr-canvas');
+        canvas.width = canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#000'; ctx.fillRect(0,0,size,size);
 
-            if (!textR && !textG && !textB) return;
-
-            // 1. Determine the maximum version required
-            // We generate dummy QRs to find the required module count (version)
-            let maxModuleCount = 0;
-            let targetVersion = 0;
-
-            const dataArr = [textR || ' ', textG || ' ', textB || ' ']; // Use space for empty to keep grid
-
-            dataArr.forEach(text => {
-                try {
-                    const qr = qrcode(0, 'M'); // Auto version
-                    qr.addData(text);
-                    qr.make();
-                    if (qr.getModuleCount() > maxModuleCount) {
-                        maxModuleCount = qr.getModuleCount();
-                        // Module count = 4*version + 17
-                        targetVersion = (qr.getModuleCount() - 17) / 4;
-                    }
-                } catch(e) {
-                    console.error("Version estimation error", e);
-                }
-            });
-
-            // 2. Generate all three QRs with the SAME version (targetVersion)
-            // This ensures perfect grid alignment (synchronization)
-            const qrs = dataArr.map(text => {
-                try {
-                    const qr = qrcode(targetVersion, 'M'); 
-                    qr.addData(text);
-                    qr.make();
-                    return qr;
-                } catch (e) {
-                    // Fallback if forced version fails (capacity issue)
-                    const qr = qrcode(0, 'M');
-                    qr.addData(text);
-                    qr.make();
-                    return qr;
-                }
-            });
-
-            // 3. Render Pixel Perfect Canvas
-            const moduleCount = qrs[0].getModuleCount(); // All should be same now
-            const moduleSize = 10; // Pixels per module (crisp, no anti-aliasing)
-            const margin = 4; // Quiet zone modules
-            const size = (moduleCount + margin * 2) * moduleSize;
-
-            const canvas = els.canvas;
-            canvas.width = size;
-            canvas.height = size;
-            const ctx = canvas.getContext('2d');
-
-            // Fill black background
-            ctx.fillStyle = '#000000';
-            ctx.fillRect(0, 0, size, size);
-
-            // Draw pixels
-            for (let y = 0; y < moduleCount; y++) {
-                for (let x = 0; x < moduleCount; x++) {
-                    // Check data in each channel
-                    const darkR = qrs[0].isDark(y, x);
-                    const darkG = qrs[1].isDark(y, x);
-                    const darkB = qrs[2].isDark(y, x);
-
-                    // Additive Mixing:
-                    // If QR is dark -> Channel is ON (255)
-                    // If QR is light -> Channel is OFF (0)
-                    const r = darkR ? 255 : 0;
-                    const g = darkG ? 255 : 0;
-                    const b = darkB ? 255 : 0;
-
-                    if (r > 0 || g > 0 || b > 0) {
-                        ctx.fillStyle = `rgb(${r},${g},${b})`;
-                        ctx.fillRect(
-                            (x + margin) * moduleSize, 
-                            (y + margin) * moduleSize, 
-                            moduleSize, 
-                            moduleSize
-                        );
-                    }
+        for(let y=0; y<modCount; y++) {
+            for(let x=0; x<modCount; x++) {
+                const r = qrs[0].isDark(y,x)?255:0;
+                const g = qrs[1].isDark(y,x)?255:0;
+                const b = qrs[2].isDark(y,x)?255:0;
+                if(r||g||b) {
+                    ctx.fillStyle = `rgb(${r},${g},${b})`;
+                    ctx.fillRect((x+margin)*modSize, (y+margin)*modSize, modSize, modSize);
                 }
             }
-
-            els.canvas.classList.remove('hidden');
-            els.btnDl.classList.remove('hidden');
         }
+        canvas.classList.remove('hidden'); $('dl-btn').classList.remove('hidden');
+    };
 
-        // ============================================
-        // CORE LOGIC: Triple Channel Scanning
-        // ============================================
-        function scanFrame() {
-            if (!els.video.videoWidth) return;
+    $('dl-btn').onclick = () => {
+        const link = document.createElement('a');
+        link.download = 'rgb-qr.png';
+        link.href = $('qr-canvas').toDataURL();
+        link.click();
+    };
 
-            const canvas = els.scanCanvas;
-            const ctx = canvas.getContext('2d');
-            const w = canvas.width = els.video.videoWidth;
-            const h = canvas.height = els.video.videoHeight;
-
-            ctx.drawImage(els.video, 0, 0, w, h);
-            const imageData = ctx.getImageData(0, 0, w, h);
-
-            // Extract Channels into Grayscale Images
-            // A QR scanner needs contrast. 
-            // In our generated code, Data=Color(255), BG=Black(0).
-            // So we can just use the channel value as brightness.
-            
-            const channels = [
-                { data: new Uint8ClampedArray(w * h * 4), name: 'r', result: null },
-                { data: new Uint8ClampedArray(w * h * 4), name: 'g', result: null },
-                { data: new Uint8ClampedArray(w * h * 4), name: 'b', result: null }
-            ];
-
-            for (let i = 0; i < imageData.data.length; i += 4) {
-                const r = imageData.data[i];
-                const g = imageData.data[i + 1];
-                const b = imageData.data[i + 2];
-                const a = imageData.data[i + 3];
-
-                // Red Channel Image
-                channels[0].data[i] = r;
-                channels[0].data[i + 1] = r;
-                channels[0].data[i + 2] = r;
-                channels[0].data[i + 3] = 255;
-
-                // Green Channel Image
-                channels[1].data[i] = g;
-                channels[1].data[i + 1] = g;
-                channels[1].data[i + 2] = g;
-                channels[1].data[i + 3] = 255;
-
-                // Blue Channel Image
-                channels[2].data[i] = b;
-                channels[2].data[i + 1] = b;
-                channels[2].data[i + 2] = b;
-                channels[2].data[i + 3] = 255;
-            }
-
-            // Decode each channel
-            const resultElements = [els.resR, els.resG, els.resB];
-
-            channels.forEach((ch, idx) => {
-                const imgData = new ImageData(ch.data, w, h);
-                const code = jsQR(imgData.data, w, h, {
-                    inversionAttempts: "dontInvert"
-                });
-
-                if (code && code.data) {
-                    if (lastResults[ch.name] !== code.data) {
-                        lastResults[ch.name] = code.data;
-                        resultElements[idx].textContent = code.data;
-                        resultElements[idx].classList.add('updated');
-                        setTimeout(() => resultElements[idx].classList.remove('updated'), 300);
-                    }
-                }
-            });
-        }
-
-        // ============================================
-        // Camera Control
-        // ============================================
-        async function toggleCamera() {
-            if (stream) {
-                stream.getTracks().forEach(t => t.stop());
-                stream = null;
-                cancelAnimationFrame(scanLoop);
-                els.video.classList.add('hidden');
-                els.placeholder.classList.remove('hidden');
-                els.statusDot.classList.remove('active');
-                els.statusText.textContent = 'Камера выключена';
-                els.btnCam.textContent = 'Включить';
-                return;
-            }
-
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: 'environment' } 
-                });
-                els.video.srcObject = stream;
-                els.video.classList.remove('hidden');
-                els.placeholder.classList.add('hidden');
-                els.statusDot.classList.add('active');
-                els.statusText.textContent = 'Сканирование...';
-                els.btnCam.textContent = 'Выключить';
-                
-                function tick() {
-                    scanFrame();
-                    scanLoop = requestAnimationFrame(tick);
-                }
-                tick();
-
-            } catch (e) {
-                console.error(e);
-                alert("Не удалось получить доступ к камере");
+    // СКАНЕР (Логика каналов)
+    function processFrame(source) {
+        const canvas = $('scan-canvas');
+        const ctx = canvas.getContext('2d', { willReadFrequently: true });
+        canvas.width = source.videoWidth || source.width;
+        canvas.height = source.videoHeight || source.height;
+        ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+        
+        const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+        const channels = [new Uint8ClampedArray(imgData.data.length), new Uint8ClampedArray(imgData.data.length), new Uint8ClampedArray(imgData.data.length)];
+        
+        for(let i=0; i<imgData.data.length; i+=4) {
+            for(let c=0; c<3; c++) {
+                const val = imgData.data[i+c];
+                channels[c][i]=channels[c][i+1]=channels[c][i+2] = val;
+                channels[c][i+3] = 255;
             }
         }
 
-        // ============================================
-        // Helpers
-        // ============================================
-        function downloadQR() {
-            const link = document.createElement('a');
-            link.download = 'rgb-qr-code.png';
-            link.href = els.canvas.toDataURL('image/png');
-            link.click();
-        }
+        const resIds = ['res-r', 'res-g', 'res-b'];
+        channels.forEach((data, i) => {
+            const code = jsQR(data, canvas.width, canvas.height);
+            if(code) $(resIds[i]).innerText = `${['RED','GREEN','BLUE'][i]}: ${code.data}`;
+        });
+    }
 
-        // ============================================
-        // Event Listeners
-        // ============================================
-        els.btnGen.addEventListener('click', generateTripleQR);
-        els.btnCam.addEventListener('click', toggleCamera);
-        els.btnDl.addEventListener('click', downloadQR);
+    // КАМЕРА
+    $('cam-btn').onclick = async () => {
+        if(stream) { stopCam(); return; }
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        $('video').srcObject = stream;
+        $('video').play();
+        $('video').classList.remove('hidden'); $('cam-idle').classList.add('hidden');
+        $('cam-btn').innerText = "СТОП";
+        const loop = () => { if(stream) { processFrame($('video')); requestAnimationFrame(loop); } };
+        loop();
+    };
 
-    </script>
+    function stopCam() {
+        stream.getTracks().forEach(t => t.stop()); stream = null;
+        $('video').classList.add('hidden'); $('cam-idle').classList.remove('hidden');
+        $('cam-btn').innerText = "ВКЛ КАМЕРУ";
+    }
+
+    // ЗАГРУЗКА ФАЙЛА
+    $('file-btn').onclick = () => $('file-input').click();
+    $('file-input').onchange = (e) => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+                stopCam(); // Выключаем камеру если была
+                processFrame(img);
+                $('cam-idle').innerText = "Файл обработан";
+            };
+            img.src = event.target.result;
+        };
+        reader.readAsDataURL(file);
+    };
+</script>
 </body>
 </html>
