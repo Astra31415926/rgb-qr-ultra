@@ -3,91 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RGB QR System</title>
+    <title>RGB QR System v2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
         :root { --r: #ff2a2a; --g: #2aff2a; --b: #2a9fff; }
-        body { background: #050505; color: #e0e0e0; font-family: system-ui, -apple-system, sans-serif; overflow-x: hidden; }
-        .btn-main { background: #111; border: 1px solid #222; transition: 0.3s; }
-        .btn-main:hover { border-color: #444; background: #181818; transform: translateY(-2px); }
-        .input-ch { background: #000; border: 1px solid #222; border-radius: 8px; padding: 12px; width: 100%; font-family: monospace; }
-        canvas { image-rendering: pixelated; }
-        .scan-frame { border: 2px solid #fff; box-shadow: 0 0 20px rgba(255,255,255,0.2); transition: 0.3s; }
-        .success-anim { transform: scale(0.9); opacity: 0.5; }
+        body { background: #000; color: #e0e0e0; font-family: ui-sans-serif, system-ui; overflow-x: hidden; }
+        
+        /* Поля ввода */
+        .input-wrapper { position: relative; margin-bottom: 1rem; }
+        .input-ch { 
+            background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 12px;
+            padding: 14px; width: 100%; color: #fff; font-family: monospace;
+            resize: none; overflow: hidden; transition: all 0.3s ease;
+        }
+        .input-ch:focus { outline: none; background: #0f0f0f; }
+        .input-r:focus { border-color: var(--r); box-shadow: 0 0 10px rgba(255,42,42,0.2); }
+        .input-g:focus { border-color: var(--g); box-shadow: 0 0 10px rgba(42,255,42,0.2); }
+        .input-b:focus { border-color: var(--b); box-shadow: 0 0 10px rgba(42,159,255,0.2); }
+
+        /* Анимация сканирования */
+        .scanner-container { position: relative; overflow: hidden; border-radius: 20px; background: #0a0a0a; }
+        .scan-line {
+            position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(to right, transparent, #fff, transparent);
+            box-shadow: 0 0 15px #fff; z-index: 10; display: none;
+        }
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+        .scanning .scan-line { display: block; animation: scan 2s linear infinite; }
+        
+        .qr-preview { transition: all 0.5s ease; max-width: 300px; width: 100%; height: auto; border-radius: 12px; }
+        .qr-downloaded { opacity: 0.3; transform: scale(0.95); filter: blur(2px); }
+        
+        .btn-action { background: #fff; color: #000; font-weight: 800; padding: 16px; border-radius: 14px; transition: 0.3s; width: 100%; }
+        .btn-action:hover { transform: translateY(-2px); opacity: 0.9; }
+        
         .hidden { display: none; }
     </style>
 </head>
-<body class="flex flex-col min-h-screen p-6">
+<body class="flex flex-col min-h-screen p-4 md:p-8">
 
-    <main id="menu" class="flex-1 flex flex-col items-center justify-center space-y-8 animate-in fade-in duration-700">
+    <main id="menu" class="flex-1 flex flex-col items-center justify-center space-y-12">
         <div class="text-center">
             <h1 class="text-5xl font-black tracking-tighter uppercase mb-2">
                 <span style="color:var(--r)">R</span><span style="color:var(--g)">G</span><span style="color:var(--b)">B</span> QR System
             </h1>
-            <p class="text-zinc-500 uppercase text-xs tracking-widest">Генератор и сканер qRgb кодов</p>
+            <p class="text-zinc-600 uppercase text-[10px] tracking-[0.3em]">Spectral Encoding Interface</p>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-md">
-            <button onclick="showPage('gen')" class="btn-main p-8 rounded-2xl flex flex-col items-center gap-3">
-                <span class="text-3xl">⊕</span> <span class="font-bold">ГЕНЕРАЦИЯ</span>
+        <div class="grid grid-cols-1 gap-4 w-full max-w-xs">
+            <button onclick="showPage('gen')" class="border border-zinc-800 p-6 rounded-2xl hover:bg-zinc-900 transition flex flex-col items-center gap-2">
+                <span class="text-2xl">⊕</span> <span class="font-bold tracking-widest text-xs">ГЕНЕРАЦИЯ</span>
             </button>
-            <button onclick="showPage('scan')" class="btn-main p-8 rounded-2xl flex flex-col items-center gap-3">
-                <span class="text-3xl">☌</span> <span class="font-bold">СКАНИРОВАНИЕ</span>
+            <button onclick="showPage('scan')" class="border border-zinc-800 p-6 rounded-2xl hover:bg-zinc-900 transition flex flex-col items-center gap-2">
+                <span class="text-2xl">☌</span> <span class="font-bold tracking-widest text-xs">СКАНИРОВАНИЕ</span>
             </button>
         </div>
 
-        <div class="max-w-xl text-center pt-10 border-t border-zinc-900">
-            <p class="text-[10px] text-zinc-600 leading-relaxed uppercase tracking-wider">
-                Технология спектрального кодирования на базе SCI Universal Model. <br>
-                Разработка: Astra314. Элемент интерактивного искусства.
+        <footer class="max-w-md text-center opacity-30">
+            <p class="text-[9px] uppercase leading-relaxed tracking-widest">
+                SCI Universal Model: Deterministic Spectral Response Normalization.<br>
+                Astra314 Research Project © 2026.
             </p>
-        </div>
+        </footer>
     </main>
 
-    <section id="page-gen" class="hidden max-w-2xl mx-auto w-full space-y-6">
-        <button onclick="goBack()" class="text-xs text-zinc-500 hover:text-white">← НАЗАД</button>
-        <div class="grid gap-4">
-            <input id="in-r" class="input-ch" style="color:var(--r)" placeholder="RED CHANNEL DATA">
-            <input id="in-g" class="input-ch" style="color:var(--g)" placeholder="GREEN CHANNEL DATA">
-            <input id="in-b" class="input-ch" style="color:var(--b)" placeholder="BLUE CHANNEL DATA">
-        </div>
-        <button onclick="generate()" class="w-full bg-white text-black font-bold py-4 rounded-xl">СОЗДАТЬ КОД</button>
-        <div class="flex flex-col items-center gap-4">
-            <canvas id="qr-canvas" class="hidden rounded-lg shadow-2xl w-full max-w-[300px]"></canvas>
-            <button id="btn-dl" class="hidden text-xs border border-zinc-800 px-4 py-2 rounded-full">СКАЧАТЬ PNG</button>
-        </div>
-    </section>
-
-    <section id="page-scan" class="hidden max-w-2xl mx-auto w-full space-y-6">
-        <button onclick="goBack()" class="text-xs text-zinc-500 hover:text-white">← НАЗАД</button>
+    <section id="page-gen" class="hidden max-w-xl mx-auto w-full space-y-6">
+        <button onclick="goBack()" class="text-[10px] tracking-widest text-zinc-500 hover:text-white transition">← ВЕРНУТЬСЯ</button>
         
-        <div class="relative aspect-square bg-zinc-950 rounded-2xl overflow-hidden flex items-center justify-center">
-            <video id="video" class="absolute inset-0 w-full h-full object-cover grayscale opacity-40" playsinline></video>
-            <img id="upload-preview" class="absolute inset-0 w-full h-full object-contain hidden">
-            <div id="scanner-ui" class="relative w-64 h-64 scan-frame rounded-3xl pointer-events-none"></div>
-            
-            <div class="absolute bottom-4 flex gap-2">
-                <button id="btn-cam" class="bg-white/10 backdrop-blur-md px-4 py-2 rounded-full text-[10px] font-bold">КАМЕРА</button>
-                <button onclick="document.getElementById('file-in').click()" class="bg-white/10 backdrop-blur-md px-4 py-2 rounded-full text-[10px] font-bold">ФАЙЛ</button>
-                <input type="file" id="file-in" class="hidden" accept="image/*">
-            </div>
+        <div class="space-y-3">
+            <textarea id="in-r" class="input-ch input-r" placeholder="RED CHANNEL..." rows="1" oninput="autoGrow(this); liveGen()"></textarea>
+            <textarea id="in-g" class="input-ch input-g" placeholder="GREEN CHANNEL..." rows="1" oninput="autoGrow(this); liveGen()"></textarea>
+            <textarea id="in-b" class="input-ch input-b" placeholder="BLUE CHANNEL..." rows="1" oninput="autoGrow(this); liveGen()"></textarea>
         </div>
 
-        <div class="grid gap-2">
-            <div id="res-r" class="p-3 rounded bg-zinc-900/50 text-xs font-mono" style="color:var(--r)">RED: ---</div>
-            <div id="res-g" class="p-3 rounded bg-zinc-900/50 text-xs font-mono" style="color:var(--g)">GREEN: ---</div>
-            <div id="res-b" class="p-3 rounded bg-zinc-900/50 text-xs font-mono" style="color:var(--b)">BLUE: ---</div>
+        <div id="gen-result" class="hidden flex flex-col items-center gap-6 py-6 animate-in fade-in zoom-in duration-500">
+            <canvas id="qr-canvas" class="qr-preview shadow-[0_0_50px_rgba(255,255,255,0.05)]"></canvas>
+            <button id="btn-dl" onclick="downloadQR()" class="btn-action">СКАЧАТЬ PNG</button>
         </div>
     </section>
 
-    <canvas id="temp-canvas" class="hidden"></canvas>
-    <audio id="shutter-sound" src="https://www.soundjay.com/mechanical/camera-shutter-click-01.mp3"></audio>
+    <section id="page-scan" class="hidden max-w-xl mx-auto w-full space-y-6">
+        <button onclick="goBack()" class="text-[10px] tracking-widest text-zinc-500 hover:text-white transition">← ВЕРНУТЬСЯ</button>
+        
+        <div id="scanner-box" class="scanner-container aspect-square">
+            <div class="scan-line"></div>
+            <video id="video" class="w-full h-full object-cover grayscale opacity-20" playsinline></video>
+            <img id="upload-preview" class="absolute inset-0 w-full h-full object-contain hidden">
+            
+            <div id="scan-controls" class="absolute inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm gap-4 transition-all duration-500">
+                <button onclick="startCamera()" class="p-4 bg-white/10 rounded-full hover:bg-white/20 transition">📷</button>
+                <button onclick="document.getElementById('file-in').click()" class="p-4 bg-white/10 rounded-full hover:bg-white/20 transition">📁</button>
+            </div>
+            <input type="file" id="file-in" class="hidden" accept="image/*">
+        </div>
+
+        <div id="results" class="grid gap-2 animate-in slide-in-from-bottom-4 duration-500">
+            <div id="res-r" class="p-4 rounded-xl bg-zinc-900/30 text-[11px] font-mono border-l-2 border-red-600/50 text-red-400">RED: ---</div>
+            <div id="res-g" class="p-4 rounded-xl bg-zinc-900/30 text-[11px] font-mono border-l-2 border-green-600/50 text-green-400">GREEN: ---</div>
+            <div id="res-b" class="p-4 rounded-xl bg-zinc-900/30 text-[11px] font-mono border-l-2 border-blue-600/50 text-blue-400">BLUE: ---</div>
+        </div>
+    </section>
+
+    <audio id="shutter" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3"></audio>
 
 <script>
-    let stream = null;
-    const shutter = document.getElementById('shutter-sound');
+    let activeStream = null;
+    const shutter = document.getElementById('shutter');
+
+    function autoGrow(el) {
+        el.style.height = "auto";
+        el.style.height = (el.scrollHeight) + "px";
+    }
 
     function showPage(id) {
         document.getElementById('menu').classList.add('hidden');
@@ -95,17 +126,37 @@
     }
 
     function goBack() {
-        if(stream) stream.getTracks().forEach(t => t.stop());
+        if(activeStream) activeStream.getTracks().forEach(t => t.stop());
         document.querySelectorAll('section').forEach(s => s.classList.add('hidden'));
         document.getElementById('menu').classList.remove('hidden');
+        // Полная очистка
+        document.querySelectorAll('textarea').forEach(t => { t.value = ''; t.style.height = 'auto'; });
+        document.getElementById('gen-result').classList.add('hidden');
+        document.getElementById('qr-canvas').classList.remove('qr-downloaded');
+        document.getElementById('upload-preview').classList.add('hidden');
+        document.getElementById('scan-controls').classList.remove('hidden');
+        document.getElementById('scanner-box').classList.remove('scanning');
+        ['res-r','res-g','res-b'].forEach(id => document.getElementById(id).innerText = id.split('-')[1].toUpperCase() + ": ---");
     }
 
-    // ГЕНЕРАТОР (Версия с синхронизацией)
-    function generate() {
-        const data = [document.getElementById('in-r').value || ' ', document.getElementById('in-g').value || ' ', document.getElementById('in-b').value || ' '];
-        let maxVer = 1;
-        data.forEach(t => { try { const q=qrcode(0,'M'); q.addData(t); q.make(); maxVer=Math.max(maxVer, (q.getModuleCount()-17)/4); } catch(e){} });
-        const qrs = data.map(t => { const q=qrcode(maxVer,'M'); q.addData(t); q.make(); return q; });
+    // LIVE ГЕНЕРАЦИЯ
+    function liveGen() {
+        const r = document.getElementById('in-r').value;
+        const g = document.getElementById('in-g').value;
+        const b = document.getElementById('in-b').value;
+
+        if(!r && !g && !b) {
+            document.getElementById('gen-result').classList.add('hidden');
+            return;
+        }
+
+        document.getElementById('gen-result').classList.remove('hidden');
+        document.getElementById('qr-canvas').classList.remove('qr-downloaded');
+
+        const data = [r || ' ', g || ' ', b || ' '];
+        let maxV = 1;
+        data.forEach(t => { try { const q=qrcode(0,'M'); q.addData(t); q.make(); maxV=Math.max(maxV, (q.getModuleCount()-17)/4); } catch(e){} });
+        const qrs = data.map(t => { const q=qrcode(maxV,'M'); q.addData(t); q.make(); return q; });
         
         const canvas = document.getElementById('qr-canvas');
         const count = qrs[0].getModuleCount(), size = 10, margin = 2, total = (count + margin*2)*size;
@@ -122,58 +173,71 @@
                 }
             }
         }
-        canvas.classList.remove('hidden'); document.getElementById('btn-dl').classList.remove('hidden');
     }
 
-    // ДЕКОДЕР
-    async function process(source) {
-        const canvas = document.getElementById('temp-canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = source.videoWidth || source.width;
-        canvas.height = source.videoHeight || source.height;
+    function downloadQR() {
+        const link = document.createElement('a');
+        link.download = `rgb-qr-${Date.now()}.png`;
+        link.href = document.getElementById('qr-canvas').toDataURL();
+        link.click();
+        shutter.play();
+        document.getElementById('qr-canvas').classList.add('qr-downloaded');
+    }
+
+    // СКАНИРОВАНИЕ
+    async function startCamera() {
+        try {
+            activeStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            const v = document.getElementById('video');
+            v.srcObject = activeStream; v.play();
+            document.getElementById('scan-controls').classList.add('hidden');
+            const scanLoop = () => { if(activeStream) { decode(v); requestAnimationFrame(scanLoop); } };
+            scanLoop();
+        } catch(e) { alert("Камера недоступна"); }
+    }
+
+    function decode(source) {
+        const temp = document.createElement('canvas');
+        const ctx = temp.getContext('2d');
+        temp.width = source.videoWidth || source.width;
+        temp.height = source.videoHeight || source.height;
         ctx.drawImage(source, 0, 0);
-        const imgData = ctx.getImageData(0,0,canvas.width,canvas.height);
+        const img = ctx.getImageData(0,0,temp.width,temp.height);
         
-        const channels = ['res-r', 'res-g', 'res-b'];
-        let foundAny = false;
+        const ids = ['res-r', 'res-g', 'res-b'];
+        let found = false;
 
         for(let c=0; c<3; c++) {
-            const buf = new Uint8ClampedArray(imgData.data.length);
-            for(let i=0; i<imgData.data.length; i+=4) {
-                buf[i]=buf[i+1]=buf[i+2]=imgData.data[i+c]; buf[i+3]=255;
-            }
-            const code = jsQR(buf, canvas.width, canvas.height, { inversionAttempts: "attemptBoth" });
-            if(code) {
-                document.getElementById(channels[c]).innerText = ['RED','GREEN','BLUE'][c] + ": " + code.data;
-                foundAny = true;
+            const b = new Uint8ClampedArray(img.data.length);
+            for(let i=0; i<img.data.length; i+=4) { b[i]=b[i+1]=b[i+2]=img.data[i+c]; b[i+3]=255; }
+            const code = jsQR(b, temp.width, temp.height, { inversionAttempts: "attemptBoth" });
+            if(code && code.data) {
+                const el = document.getElementById(ids[c]);
+                if(el.innerText.indexOf(code.data) === -1) {
+                    el.innerText = ids[c].split('-')[1].toUpperCase() + ": " + code.data;
+                    found = true;
+                }
             }
         }
-
-        if(foundAny) {
-            shutter.play();
-            document.getElementById('scanner-ui').classList.add('success-anim', 'border-green-500');
-            setTimeout(() => document.getElementById('scanner-ui').classList.remove('success-anim', 'border-green-500'), 500);
-        }
+        if(found) shutter.play();
     }
 
-    // КАМЕРА
-    document.getElementById('btn-cam').onclick = async () => {
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-        const v = document.getElementById('video');
-        v.srcObject = stream; v.play(); v.classList.remove('hidden');
-        const loop = () => { if(stream) { process(v); requestAnimationFrame(loop); } };
-        loop();
-    };
-
-    // ФАЙЛ
     document.getElementById('file-in').onchange = (e) => {
         const reader = new FileReader();
         reader.onload = (ev) => {
             const img = new Image();
             img.onload = () => {
-                const preview = document.getElementById('upload-preview');
-                preview.src = img.src; preview.classList.remove('hidden');
-                process(img);
+                document.getElementById('scan-controls').classList.add('hidden');
+                const prev = document.getElementById('upload-preview');
+                prev.src = img.src; prev.classList.remove('hidden');
+                
+                // Анимация луча
+                const box = document.getElementById('scanner-box');
+                box.classList.add('scanning');
+                setTimeout(() => {
+                    decode(img);
+                    box.classList.remove('scanning');
+                }, 2000);
             };
             img.src = ev.target.result;
         };
