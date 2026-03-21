@@ -3,156 +3,753 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RGB QR System v3.1 | Astra314</title>
+    <title>RGB QR System v3.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Outfit:wght@200;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Outfit:wght=200;400;700&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #000; --surface: #050505; --border: #111; --text: #e0e0e0; --r: #FF0000; --g: #00FF00; --b: #0000FF; }
-        body { font-family: 'Outfit', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+        :root {
+            --bg: #000000;
+            --surface: #050505;
+            --border: #111111;
+            --text: #e0e0e0;
+            --muted: #555;
+            
+            --r: #FF0000; /* Pure Red */
+            --g: #00FF00; /* Pure Green */
+            --b: #0000FF; /* Pure Blue */
+            
+            --neon-w: 0 0 5px #fff, 0 0 10px #fff;
+            --neon-r: 0 0 5px var(--r), 0 0 10px var(--r);
+            --neon-g: 0 0 5px var(--g), 0 0 10px var(--g);
+            --neon-b: 0 0 5px var(--b), 0 0 10px var(--b);
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow-x: hidden;
+        }
+
         .font-mono { font-family: 'JetBrains Mono', monospace; }
-        
-        /* Кнопки та картки */
-        .btn-neon { border: 1px solid rgba(255,255,255,0.2); padding: 0.5rem 1rem; font-size: 0.7rem; text-transform: uppercase; transition: 0.3s; cursor: pointer; }
-        .btn-neon:hover { border-color: #fff; box-shadow: 0 0 10px #fff; }
-        
-        /* Поля вводу */
-        .input-rgb { background: #080808; border: 1px solid #111; color: #fff; padding: 1rem; width: 100%; resize: none; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; transition: 0.3s; }
-        .input-r:focus { border-color: var(--r); outline: none; }
-        .input-g:focus { border-color: var(--g); outline: none; }
-        .input-b:focus { border-color: var(--b); outline: none; }
 
-        /* Корекція фото (Адаптивне стискання) */
-        #scan-preview-canvas { max-width: 150px !important; max-height: 150px !important; margin: 15px auto; border: 1px solid #222; image-rendering: pixelated; object-fit: contain; display: block; }
-        .fade-scan { opacity: 0.4; filter: grayscale(1); }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 2px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); }
 
-        /* Модалки з прокруткою */
-        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.95); backdrop-filter: blur(10px); z-index: 100; display: none; align-items: center; justify-content: center; }
+        /* Neon Buttons */
+        .btn-neon {
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            background: transparent;
+            transition: all 0.3s ease;
+        }
+
+        .btn-neon:hover {
+            border-color: #fff;
+            box-shadow: var(--neon-w);
+            text-shadow: var(--neon-w);
+        }
+
+        /* Action Cards */
+        .action-card {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .action-card:hover {
+            background: rgba(255,255,255,0.05);
+            border-color: #333;
+            transform: translateY(-4px);
+        }
+
+        /* Inputs */
+        .input-rgb {
+            background: rgba(0,0,0,0.8);
+            border: 1px solid #111;
+            color: #fff;
+            padding: 1rem;
+            width: 100%;
+            resize: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            overflow-y: hidden; /* For auto-height */
+            transition: border-color 0.3s;
+        }
+
+        .input-rgb:focus {
+            outline: none;
+        }
+
+        .input-rgb.input-r:focus { border-color: var(--r); box-shadow: inset 0 0 20px rgba(255,0,0,0.1); }
+        .input-rgb.input-g:focus { border-color: var(--g); box-shadow: inset 0 0 20px rgba(0,255,0,0.1); }
+        .input-rgb.input-b:focus { border-color: var(--b); box-shadow: inset 0 0 20px rgba(0,0,255,0.1); }
+
+        /* Canvas Styles */
+        #qr-canvas, #scan-preview-canvas {
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        /* Animations */
+        @keyframes scanLine {
+            0% { top: 0%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+
+        .scan-line {
+            position: absolute;
+            left: 0; width: 100%; height: 2px;
+            background: #fff;
+            box-shadow: 0 0 15px 5px #fff;
+            animation: scanLine 2s linear forwards;
+            z-index: 10;
+        }
+
+        @keyframes flash {
+            0%, 100% { box-shadow: none; opacity: 1; }
+            50% { box-shadow: inset 0 0 20px #fff; opacity: 0.9; border-color: #fff; }
+        }
+        
+        .flash-effect {
+            animation: flash 0.5s ease-out;
+        }
+
+        .fade-q {
+            opacity: 0.2 !important;
+            transition: opacity 1s ease;
+        }
+        
+        .fade-scan {
+            opacity: 0.1 !important;
+            transition: opacity 1s ease;
+        }
+
+        /* Transitions */
+        .view { display: none; opacity: 0; transition: opacity 0.5s ease; }
+        .view.active { display: block; opacity: 1; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed; inset: 0; background: rgba(0,0,0,0.9);
+            backdrop-filter: blur(10px);
+            z-index: 100; display: none; align-items: center; justify-content: center;
+        }
         .modal-overlay.active { display: flex; }
-        .modal-content { background: #050505; border: 1px solid #222; padding: 2rem; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; }
-        
-        .result-box { background: #000; border: 1px solid #1a1a1a; padding: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.85rem; margin-top: 0.5rem; word-break: break-all; }
+
+        .modal-content {
+            background: #0a0a0a;
+            border: 1px solid #333;
+            padding: 2rem;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .result-box {
+            background: #000;
+            border: 1px solid #222;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            word-break: break-all;
+            min-height: 60px;
+            transition: all 0.3s;
+        }
+
     </style>
 </head>
-<body class="flex flex-col items-center p-6">
+<body class="min-h-screen flex flex-col">
 
-    <header class="w-full max-w-2xl flex justify-between items-center mb-12">
-        <h1 class="text-xl font-bold tracking-tighter">RGB QR <span class="font-light opacity-50">v3.1</span></h1>
-        <nav class="flex gap-4">
-            <button onclick="openModal('howto')" class="btn-neon">Як</button>
+    <!-- ==================== MAIN MENU ==================== -->
+    <div id="menu-view" class="view active flex flex-col flex-grow justify-center items-center p-8">
+        <div class="text-center mb-16">
+            <h1 class="text-5xl md:text-7xl font-light tracking-wider">
+                <span style="color: var(--r); text-shadow: var(--neon-r);">R</span><span style="color: var(--g); text-shadow: var(--neon-g);">G</span><span style="color: var(--b); text-shadow: var(--neon-b);">B</span>
+                <span class="text-white ml-4">QR System</span>
+            </h1>
+            <p class="text-xs text-gray-600 mt-4 tracking-widest uppercase">Spectral Data Encoding v3.0</p>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-8 w-full max-w-3xl">
+            <button onclick="navigateTo('gen')" class="action-card p-12 text-left">
+                <div class="text-2xl font-bold mb-2">ГЕНЕРАЦІЯ</div>
+                <div class="text-xs text-gray-500">GENERATION MODULE</div>
+            </button>
+            <button onclick="navigateTo('scan')" class="action-card p-12 text-left">
+                <div class="text-2xl font-bold mb-2">СКАНУВАННЯ</div>
+                <div class="text-xs text-gray-500">SPECTRAL ANALYZER</div>
+            </button>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="fixed bottom-8 flex gap-4 flex-wrap justify-center">
+            <button onclick="openModal('howto')" class="btn-neon">Як користуватися</button>
             <button onclick="openModal('tech')" class="btn-neon">Технологія</button>
             <button onclick="openModal('author')" class="btn-neon">Автор</button>
-        </nav>
-    </header>
+        </div>
+    </div>
 
-    <main class="w-full max-w-2xl space-y-12">
-        <section class="space-y-4">
-            <p class="text-[10px] uppercase tracking-[0.3em] opacity-30 text-center">Generator</p>
-            <textarea id="input-r" class="input-rgb input-r" placeholder="RED CHANNEL (Кирилиця працює)"></textarea>
-            <textarea id="input-g" class="input-rgb input-g" placeholder="GREEN CHANNEL"></textarea>
-            <textarea id="input-b" class="input-rgb input-b" placeholder="BLUE CHANNEL"></textarea>
-            <canvas id="qr-canvas" class="mx-auto hidden mt-6 border border-zinc-800"></canvas>
-        </section>
-
-        <section class="space-y-4 pt-8 border-t border-zinc-900">
-            <p class="text-[10px] uppercase tracking-[0.3em] opacity-30 text-center">Scanner</p>
-            <div class="flex justify-center">
-                <input type="file" id="file-input" class="hidden" accept="image/*">
-                <button onclick="document.getElementById('file-input').click()" class="btn-neon border-white/40">Завантажити фото</button>
+    <!-- ==================== GENERATOR VIEW ==================== -->
+    <div id="gen-view" class="view p-4 md:p-8">
+        <div class="max-w-5xl mx-auto">
+            <div class="flex justify-between items-center mb-8">
+                <button onclick="resetToMenu()" class="btn-neon">Назад</button>
+                <div class="text-xs text-gray-600 font-mono">LIVE MODE</div>
             </div>
-            
-            <canvas id="scan-preview-canvas" class="hidden"></canvas>
 
-            <div class="grid gap-2 mt-6">
-                <div class="result-box border-l-2 border-red-600"><span class="opacity-30 mr-2 text-[10px]">R:</span> <span id="res-r">-</span></div>
-                <div class="result-box border-l-2 border-green-600"><span class="opacity-30 mr-2 text-[10px]">G:</span> <span id="res-g">-</span></div>
-                <div class="result-box border-l-2 border-blue-600"><span class="opacity-30 mr-2 text-[10px]">B:</span> <span id="res-b">-</span></div>
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Input Section -->
+                <div class="space-y-4">
+                    <div style="border-left: 2px solid var(--r)">
+                        <textarea id="input-r" class="input-rgb input-r" rows="2" placeholder="RED CHANNEL DATA"></textarea>
+                    </div>
+                    <div style="border-left: 2px solid var(--g)">
+                        <textarea id="input-g" class="input-rgb input-g" rows="2" placeholder="GREEN CHANNEL DATA"></textarea>
+                    </div>
+                    <div style="border-left: 2px solid var(--b)">
+                        <textarea id="input-b" class="input-rgb input-b" rows="2" placeholder="BLUE CHANNEL DATA"></textarea>
+                    </div>
+                </div>
+
+                <!-- Output Section -->
+                <div class="flex flex-col items-center justify-center">
+                    <div id="qr-container" class="relative bg-black p-4 w-full max-w-xs aspect-square flex items-center justify-center border border-gray-900">
+                        <div id="gen-placeholder" class="text-gray-700 text-xs text-center">Очікування введення...</div>
+                        <canvas id="qr-canvas" class="hidden w-full h-full"></canvas>
+                    </div>
+                    
+                    <button id="btn-download" onclick="downloadQR()" class="btn-neon mt-8 hidden">
+                        СКАЧАТИ PNG
+                    </button>
+                    <p id="post-download-msg" class="text-xs text-gray-600 mt-4 hidden text-center">
+                        Зображення готове. Дізнайтеся, чому це працює в розділі <span class="underline cursor-pointer" onclick="openModal('tech')">ТЕХНОЛОГІЯ</span>.
+                    </p>
+                </div>
             </div>
-        </section>
-    </main>
+        </div>
+    </div>
 
-    <div id="modal" class="modal-overlay" onclick="closeModal()">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h2 id="modal-title" class="text-lg font-bold uppercase mb-4 tracking-widest"></h2>
-            <div id="modal-body" class="text-sm text-zinc-400 leading-relaxed space-y-4"></div>
-            <button onclick="closeModal()" class="mt-8 text-[10px] uppercase opacity-50 hover:opacity-100">Закрити [x]</button>
+    <!-- ==================== SCANNER VIEW ==================== -->
+    <div id="scan-view" class="view p-4 md:p-8">
+        <div class="max-w-5xl mx-auto">
+            <div class="flex justify-between items-center mb-8">
+                <button onclick="resetToMenu()" class="btn-neon">Назад</button>
+                <div class="text-xs text-gray-600 font-mono">SPECTRAL ANALYZER</div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Camera/File Section -->
+                <div class="flex flex-col items-center">
+                    <div id="scan-ui-controls" class="flex gap-4 mb-4">
+                        <button id="btn-start-cam" class="btn-neon">Камера</button>
+                        <button id="btn-upload-file" class="btn-neon">Файл</button>
+                        <input type="file" id="file-input" class="hidden" accept="image/*">
+                    </div>
+
+                    <div id="scan-viewport" class="relative w-full aspect-square bg-black border border-gray-900 flex items-center justify-center overflow-hidden">
+                        <video id="video" class="w-full h-full object-cover hidden" playsinline></video>
+                        <canvas id="scan-preview-canvas" class="hidden w-full h-full object-contain"></canvas>
+                        <div id="scan-placeholder" class="text-gray-700 text-xs text-center absolute">Виберіть джерело</div>
+                    </div>
+                    <div id="error-msg" class="text-red-500 text-xs mt-4 hidden font-bold tracking-widest">СИГНАЛ НЕ РОЗПІЗНАНО / SIGNAL LOST</div>
+                </div>
+
+                <!-- Results Section -->
+                <div class="space-y-4">
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">RED CHANNEL</label>
+                        <div id="res-r" class="result-box border-red-500/30">Очікування сигналу...</div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">GREEN CHANNEL</label>
+                        <div id="res-g" class="result-box border-green-500/30">Очікування сигналу...</div>
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 mb-1 block">BLUE CHANNEL</label>
+                        <div id="res-b" class="result-box border-blue-500/30">Очікування сигналу...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==================== MODALS ==================== -->
+
+    <!-- How To Use -->
+    <div id="modal-howto" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">Як користуватися</h2>
+                <div class="flex gap-2">
+                    <button onclick="setLang('ua')" class="lang-btn text-xs p-1">UA</button>
+                    <button onclick="setLang('en')" class="lang-btn text-xs p-1">EN</button>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-white ml-4">[X]</button>
+                </div>
+            </div>
+            <div id="content-howto" class="text-sm text-gray-300 space-y-4 leading-relaxed">
+                <!-- Content filled by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Technology -->
+    <div id="modal-tech" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">Технологія</h2>
+                <div class="flex gap-2">
+                    <button onclick="setLang('ua')" class="lang-btn text-xs p-1">UA</button>
+                    <button onclick="setLang('en')" class="lang-btn text-xs p-1">EN</button>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-white ml-4">[X]</button>
+                </div>
+            </div>
+            <div id="content-tech" class="text-sm text-gray-300 space-y-4 leading-relaxed">
+                <!-- Content filled by JS -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Author -->
+    <div id="modal-author" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold">Автор</h2>
+                <div class="flex gap-2">
+                    <button onclick="setLang('ua')" class="lang-btn text-xs p-1">UA</button>
+                    <button onclick="setLang('en')" class="lang-btn text-xs p-1">EN</button>
+                    <button onclick="closeModal()" class="text-gray-500 hover:text-white ml-4">[X]</button>
+                </div>
+            </div>
+            <div id="content-author" class="text-sm text-gray-300 space-y-4 leading-relaxed">
+                <!-- Content filled by JS -->
+            </div>
         </div>
     </div>
 
     <script>
-        const encoder = new TextEncoder();
-        const decoder = new TextDecoder('utf-8');
-
-        const content = {
-            howto: { title: "Як користуватися", text: "<p>1. Введіть текст у будь-яке з трьох полів (Кожен колір — окремий шар даних).</p><p>2. Система автоматично згенерує кольоровий QR-код.</p><p>3. Для розкодування завантажте скріншот або фото. Система розділить кольори та зчитає кирилицю без помилок.</p>" },
-            tech: { title: "Технологія", text: "<p><b>RGB-Multiplexing:</b> Використання адитивної моделі кольору для потроєння щільності даних.</p><p><b>UTF-8 Byte Encoding:</b> Виправлено проблему стандартних бібліотек QR, що не підтримували кирилицю. Тепер дані передаються у вигляді байтового масиву.</p>" },
-            author: { title: "Автор", text: "<p><b>Михайло Кашкаров</b></p><p>Science-art інженер. Спеціалізація: спектральний дизайн та оптичні системи передачі даних.</p><p>Email: bakminsterfuler@gmail.com</p>" }
+        // ================== STATE & DATA ==================
+        const state = {
+            lang: 'ua',
+            cameraActive: false,
+            stream: null,
+            scanLoop: null,
+            lastResults: {r: null, g: null, b: null}
         };
 
-        function openModal(id) {
-            document.getElementById('modal-title').innerText = content[id].title;
-            document.getElementById('modal-body').innerHTML = content[id].text;
-            document.getElementById('modal').classList.add('active');
+        // Content Database
+        const content = {
+            ua: {
+                howto: `
+                    <p>На цьому сайті ви можете створювати кольорові (спектральні) 2D-коди, де дані розподіляються по каналах R, G, B.</p>
+                    <p><strong>Інструкція:</strong></p>
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li>Перейдіть до модуля "Генерація" і введіть текст у поля. Код створиться миттєво.</li>
+                        <li>Перейдіть до "Сканування", щоб зчитати код з екрана або файлу.</li>
+                    </ul>
+                    <p class="mt-4 text-xs bg-white/5 p-3 border-l-2 border-white/30">Цей сайт не зберігає ваші дані. Всі операції відбуваються локально у вашому браузері.</p>
+                    <p class="mt-4 text-yellow-300/70">⚠️ Важливо: Стабільне зчитування у друк потребує спеціальних методів корекції кольору. Деталі в розділі АВТОР.</p>
+                `,
+                tech: `
+                    <p><strong>Міжканальний шум та QR-коди</strong></p>
+                    <p>Класичні QR-коди (розроблені Масахіро Хара) оптимізовані для чорно-білого контрасту. При друку в CMYK виникає проблема зміщення каналів, що ускладнює зчитування.</p>
+                    <p class="mt-2">Ця система використовує адитивну модель RGB (екран), де кожен канал є незалежним носієм інформації. Це дозволяє зберігати в 3 рази більше даних в одному зображенні, але потребує точного налаштування обладнання для друку.</p>
+                    <p class="mt-4 text-xs">Технологія розроблена для дослідження меж інформаційної ємності 2D-кодів.</p>
+                `,
+                author: `
+                    <p><strong>Михайло Кашкаров</strong></p>
+                    <p class="text-gray-400 text-xs mb-4">Дослідник, Інженер, Автор проекту SCI</p>
+                    <p>Спеціалізується на стеганографії, технологіях друку та інтерфейсах людино-машинної взаємодії.</p>
+                    <div class="mt-6 space-y-2 text-xs font-mono">
+                        <p>Email: <a href="mailto:bakminsterfuler@gmail.com" class="text-white hover:underline">bakminsterfuler@gmail.com</a></p>
+                        <p>Portfolio: <a href="https://astra31415926.github.io/" target="_blank" class="text-white hover:underline">astra31415926.github.io</a></p>
+                        <p>Zenodo / White Paper: <span class="text-gray-500">(Посилання на наукову роботу)</span></p>
+                    </div>
+                    <p class="mt-6 text-xs">Для співпраці та ліцензування моделі SCI, будь ласка, використовуйте вказані контакти.</p>
+                `
+            },
+            en: {
+                howto: `
+                    <p>Create spectral 2D codes where data is distributed across R, G, B channels.</p>
+                    <p><strong>Instructions:</strong></p>
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li>Go to "GENERATION" and input text. Code generates instantly.</li>
+                        <li>Go to "SCANNING" to decode from camera or file.</li>
+                    </ul>
+                    <p class="mt-4 text-xs bg-white/5 p-3 border-l-2 border-white/30">Privacy: This site does not store your data. Everything is processed locally in your browser.</p>
+                    <p class="mt-4 text-yellow-300/70">Note: Stable print scanning requires additional methods (see AUTHOR section).</p>
+                `,
+                tech: `
+                    <p><strong>Inter-channel Noise & QR Codes</strong></p>
+                    <p>Classic QR codes (by Masahiro Hara) are optimized for black-and-white contrast. CMYK printing introduces channel misalignment issues.</p>
+                    <p class="mt-2">This system uses additive RGB model where each channel is an independent data carrier. This triples data capacity but requires precise hardware calibration for printing.</p>
+                `,
+                author: `
+                    <p><strong>Mykhailo Kashkarov</strong></p>
+                    <p class="text-gray-400 text-xs mb-4">Researcher, Engineer, SCI Project Author</p>
+                    <p>Specializing in steganography, printing technologies, and human-computer interfaces.</p>
+                    <div class="mt-6 space-y-2 text-xs font-mono">
+                        <p>Email: <a href="mailto:bakminsterfuler@gmail.com" class="text-white hover:underline">bakminsterfuler@gmail.com</a></p>
+                        <p>Portfolio: <a href="https://astra31415926.github.io/" target="_blank" class="text-white hover:underline">astra31415926.github.io</a></p>
+                    </div>
+                `
+            }
+        };
+
+        // ================== AUDIO ENGINE ==================
+        // Web Audio API for shutter and beep
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playShutter() {
+            const noise = audioCtx.createBufferSource();
+            const bufferSize = audioCtx.sampleRate * 0.2;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) {
+                data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 5); // White noise decay
+            }
+            noise.buffer = buffer;
+            const filter = audioCtx.createBiquadFilter();
+            filter.type = "highpass";
+            filter.frequency.value = 1000;
+            noise.connect(filter).connect(audioCtx.destination);
+            noise.start();
         }
-        function closeModal() { document.getElementById('modal').classList.remove('active'); }
 
-        // GENERATION
-        document.querySelectorAll('.input-rgb').forEach(el => el.addEventListener('input', () => {
-            const data = [document.getElementById('input-r').value, document.getElementById('input-g').value, document.getElementById('input-b').value];
-            if (!data.join('').trim()) { document.getElementById('qr-canvas').classList.add('hidden'); return; }
+        function playSuccessBeep() {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
 
-            const qrs = data.map(text => {
-                const q = qrcode(0, 'M');
-                q.addData(Array.from(encoder.encode(text || " ")), 'Byte'); // КИРИЛИЦЯ FIX
-                q.make();
-                return q;
+        // ================== NAVIGATION ==================
+        function navigateTo(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(`${viewId}-view`).classList.add('active');
+        }
+
+        function resetToMenu() {
+            // Reset Camera
+            if (state.stream) {
+                state.stream.getTracks().forEach(t => t.stop());
+                state.stream = null;
+            }
+            cancelAnimationFrame(state.scanLoop);
+            state.cameraActive = false;
+            
+            // Reset Inputs
+            document.getElementById('input-r').value = '';
+            document.getElementById('input-g').value = '';
+            document.getElementById('input-b').value = '';
+            
+            // Reset UI
+            document.getElementById('qr-canvas').classList.add('hidden');
+            document.getElementById('gen-placeholder').classList.remove('hidden');
+            document.getElementById('btn-download').classList.add('hidden');
+            document.getElementById('post-download-msg').classList.add('hidden');
+            
+            // Reset Scan
+            document.getElementById('video').classList.add('hidden');
+            document.getElementById('scan-preview-canvas').classList.add('hidden');
+            document.getElementById('scan-placeholder').classList.remove('hidden');
+            document.getElementById('scan-ui-controls').classList.remove('hidden');
+            document.getElementById('error-msg').classList.add('hidden');
+
+            navigateTo('menu');
+        }
+
+        // ================== MODAL SYSTEM ==================
+        function openModal(id) {
+            const modal = document.getElementById(`modal-${id}`);
+            modal.classList.add('active');
+            updateContent(id);
+        }
+
+        function closeModal() {
+            document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+        }
+
+        function setLang(lang) {
+            state.lang = lang;
+            document.querySelectorAll('.lang-btn').forEach(b => b.style.color = '#666');
+            updateContent('howto');
+            updateContent('tech');
+            updateContent('author');
+        }
+
+        function updateContent(id) {
+            document.getElementById(`content-${id}`).innerHTML = content[state.lang][id];
+        }
+
+        // ================== GENERATION LOGIC ==================
+        const inputR = document.getElementById('input-r');
+        const inputG = document.getElementById('input-g');
+        const inputB = document.getElementById('input-b');
+        
+        [inputR, inputG, inputB].forEach(el => {
+            el.addEventListener('input', () => {
+                autoResize(el);
+                liveGenerate();
             });
+        });
+
+        function autoResize(el) {
+            el.style.height = 'auto';
+            el.style.height = (el.scrollHeight) + 'px';
+        }
+
+        function liveGenerate() {
+            const tR = inputR.value.trim() || ' ';
+            const tG = inputG.value.trim() || ' ';
+            const tB = inputB.value.trim() || ' ';
+
+            // Check if any data present (besides space)
+            if (!inputR.value && !inputG.value && !inputB.value) {
+                document.getElementById('qr-canvas').classList.add('hidden');
+                document.getElementById('gen-placeholder').classList.remove('hidden');
+                document.getElementById('btn-download').classList.add('hidden');
+                return;
+            }
+
+            // Generation Logic (Synchronized Version)
+            let maxV = 0;
+            const data = [tR, tG, tB];
+            
+            // Determine max version
+            data.forEach(t => {
+                try {
+                    const qr = qrcode(0, 'M');
+                    qr.addData(t);
+                    qr.make();
+                    const v = (qr.getModuleCount() - 17) / 4;
+                    if (v > maxV) maxV = v;
+                } catch(e) {}
+            });
+
+            const qrs = data.map(t => {
+                try {
+                    const qr = qrcode(maxV, 'M');
+                    qr.addData(t);
+                    qr.make();
+                    return qr;
+                } catch(e) {
+                    const qr = qrcode(0, 'M');
+                    qr.addData(t);
+                    qr.make();
+                    return qr;
+                }
+            });
+
+            // Render
+            const modCount = qrs[0].getModuleCount();
+            const modSize = 8;
+            const margin = 4;
+            const size = (modCount + margin*2) * modSize;
 
             const canvas = document.getElementById('qr-canvas');
             const ctx = canvas.getContext('2d');
-            const mc = qrs[0].getModuleCount();
-            const ms = 6;
-            canvas.width = canvas.height = mc * ms;
-            canvas.classList.remove('hidden');
+            canvas.width = size;
+            canvas.height = size;
+            
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, size, size);
 
-            for (let y = 0; y < mc; y++) {
-                for (let x = 0; x < mc; x++) {
-                    ctx.fillStyle = `rgb(${qrs[0].isDark(y,x)?255:0},${qrs[1].isDark(y,x)?255:0},${qrs[2].isDark(y,x)?255:0})`;
-                    ctx.fillRect(x * ms, y * ms, ms, ms);
+            for(let y=0; y<modCount; y++) {
+                for(let x=0; x<modCount; x++) {
+                    const dR = qrs[0].isDark(y, x);
+                    const dG = qrs[1].isDark(y, x);
+                    const dB = qrs[2].isDark(y, x);
+
+                    const r = dR ? 255 : 0;
+                    const g = dG ? 255 : 0;
+                    const b = dB ? 255 : 0;
+
+                    if(r>0 || g>0 || b>0) {
+                        ctx.fillStyle = `rgb(${r},${g},${b})`;
+                        ctx.fillRect((x+margin)*modSize, (y+margin)*modSize, modSize, modSize);
+                    }
                 }
             }
-        }));
 
-        // SCANNING
-        document.getElementById('file-input').addEventListener('change', (e) => {
+            canvas.classList.remove('hidden');
+            document.getElementById('gen-placeholder').classList.add('hidden');
+            document.getElementById('btn-download').classList.remove('hidden');
+            
+            // Reset visual state on new input
+            canvas.classList.remove('fade-q');
+            document.getElementById('post-download-msg').classList.add('hidden');
+        }
+
+        function downloadQR() {
+            const link = document.createElement('a');
+            link.download = 'rgb-qr-v3.png';
+            link.href = document.getElementById('qr-canvas').toDataURL('image/png');
+            
+            // Effects
+            playShutter();
+            link.click();
+            
+            // Visual Feedback
+            setTimeout(() => {
+                document.getElementById('qr-canvas').classList.add('fade-q');
+                document.getElementById('post-download-msg').classList.remove('hidden');
+            }, 100);
+        }
+
+        // ================== SCANNING LOGIC ==================
+        const video = document.getElementById('video');
+        const scanCanvas = document.getElementById('scan-preview-canvas');
+        const fileInput = document.getElementById('file-input');
+        const scanViewport = document.getElementById('scan-viewport');
+
+        document.getElementById('btn-start-cam').addEventListener('click', startCamera);
+        document.getElementById('btn-upload-file').addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFile);
+
+        async function startCamera() {
+            try {
+                state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }});
+                video.srcObject = state.stream;
+                video.classList.remove('hidden');
+                document.getElementById('scan-ui-controls').classList.add('hidden');
+                document.getElementById('scan-placeholder').classList.add('hidden');
+                document.getElementById('error-msg').classList.add('hidden');
+                
+                video.play();
+                state.cameraActive = true;
+                tick();
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        function tick() {
+            if(!state.cameraActive) return;
+            
+            const canvas = scanCanvas;
+            const ctx = canvas.getContext('2d');
+            
+            if(video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
+                processFrame(ctx.getImageData(0, 0, canvas.width, canvas.height));
+            }
+            state.scanLoop = requestAnimationFrame(tick);
+        }
+
+        function handleFile(e) {
             const file = e.target.files[0];
-            if (!file) return;
+            if(!file) return;
+            
             const reader = new FileReader();
-            reader.onload = (evt) => {
+            reader.onload = function(evt) {
                 const img = new Image();
-                img.onload = () => {
-                    const c = document.getElementById('scan-preview-canvas');
-                    c.width = img.width; c.height = img.height;
-                    c.getContext('2d').drawImage(img, 0, 0);
-                    c.classList.remove('hidden', 'fade-scan');
+                img.onload = function() {
+                    // UI Setup
+                    scanCanvas.classList.remove('hidden');
+                    video.classList.add('hidden');
+                    document.getElementById('scan-ui-controls').classList.add('hidden');
+                    document.getElementById('scan-placeholder').classList.add('hidden');
+                    document.getElementById('error-msg').classList.add('hidden');
                     
-                    const imgData = c.getContext('2d').getImageData(0,0,c.width,c.height);
-                    ['res-r', 'res-g', 'res-b'].forEach((id, i) => {
-                        const gray = new Uint8ClampedArray(imgData.data.length);
-                        for (let j=0; j<imgData.data.length; j+=4) {
-                            gray[j]=gray[j+1]=gray[j+2]=imgData.data[j+i];
-                            gray[j+3]=255;
-                        }
-                        const code = jsQR(gray, c.width, c.height);
-                        document.getElementById(id).innerText = code ? code.data : "-";
-                    });
-                    c.classList.add('fade-scan');
+                    // Draw Image
+                    const ctx = scanCanvas.getContext('2d');
+                    scanCanvas.width = img.width;
+                    scanCanvas.height = img.height;
+                    ctx.drawImage(img, 0, 0);
+
+                    // Scan Line Animation
+                    const line = document.createElement('div');
+                    line.className = 'scan-line';
+                    scanViewport.appendChild(line);
+                    
+                    // Wait for animation then process
+                    setTimeout(() => {
+                        line.remove();
+                        processFrame(ctx.getImageData(0, 0, scanCanvas.width, scanCanvas.height), true);
+                    }, 2000);
                 };
                 img.src = evt.target.result;
             };
             reader.readAsDataURL(file);
-        });
+        }
+
+        function processFrame(imageData, fadeImage = false) {
+            const w = imageData.width;
+            const h = imageData.height;
+            const data = imageData.data;
+            
+            // Buffers for channels
+            const buffR = new Uint8ClampedArray(w*h*4);
+            const buffG = new Uint8ClampedArray(w*h*4);
+            const buffB = new Uint8ClampedArray(w*h*4);
+
+            for(let i=0; i<data.length; i+=4) {
+                buffR[i] = buffR[i+1] = buffR[i+2] = data[i];
+                buffG[i] = buffG[i+1] = buffG[i+2] = data[i+1];
+                buffB[i] = buffB[i+1] = buffB[i+2] = data[i+2];
+                buffR[i+3] = buffG[i+3] = buffB[i+3] = 255;
+            }
+
+            const resR = decodeChannel(buffR, w, h);
+            const resG = decodeChannel(buffG, w, h);
+            const resB = decodeChannel(buffB, w, h);
+
+            // Update UI
+            updateResult('res-r', resR);
+            updateResult('res-g', resG);
+            updateResult('res-b', resB);
+
+            // Success/Fail Logic
+            if(resR || resG || resB) {
+                playSuccessBeep();
+                if(fadeImage) scanCanvas.classList.add('fade-scan');
+                
+                // Flash effect
+                ['res-r', 'res-g', 'res-b'].forEach(id => {
+                    document.getElementById(id).classList.add('flash-effect');
+                    setTimeout(() => document.getElementById(id).classList.remove('flash-effect'), 500);
+                });
+            } else if (fadeImage) {
+                // If file upload and nothing found
+                document.getElementById('error-msg').classList.remove('hidden');
+            }
+        }
+
+        function decodeChannel(buffer, w, h) {
+            const imgData = new ImageData(buffer, w, h);
+            const code = jsQR(imgData.data, w, h, { inversionAttempts: "attemptBoth" });
+            return code ? code.data : null;
+        }
+
+        function updateResult(id, data) {
+            const el = document.getElementById(id);
+            if(data && el.innerText !== data) {
+                el.innerText = data;
+            } else if(!data) {
+                // Don't reset on live cam, only clear if needed. 
+                // For file upload we could clear, but let's leave previous result.
+            }
+        }
     </script>
 </body>
 </html>
