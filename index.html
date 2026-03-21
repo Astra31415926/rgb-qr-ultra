@@ -3,17 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>RGB QR Ultra v3.2 | Spectral Encoding</title>
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>RGB QR Ultra v4.0</title>
     
-    <!-- Meta & OG -->
-    <meta name="description" content="Advanced tool for encoding data in RGB channels of QR codes. Triple capacity.">
-    <meta property="og:title" content="RGB QR Ultra">
-    <meta property="og:image" content="https://astra31415926.github.io/rgb-qr-ultra/og-preview.png">
-    <meta property="og:type" content="website">
-    
-    <!-- Favicon (RGB Cube SVG) -->
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='10' y='10' width='35' height='35' fill='%23ff004d'/><rect x='55' y='10' width='35' height='35' fill='%2300ff41'/><rect x='32' y='55' width='35' height='35' fill='%230088ff'/></svg>">
-    
+    <!-- SEO & Meta -->
+    <meta name="description" content="Генератор та сканер спектральних QR-кодів з підтримкою RGB-каналів.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='10' y='10' width='35' height='35' rx='5' fill='%23ff004d'/><rect x='55' y='10' width='35' height='35' rx='5' fill='%2300ff41'/><rect x='32' y='55' width='35' height='35' rx='5' fill='%230088ff'/></svg>">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -30,8 +27,9 @@
             theme: {
                 extend: {
                     colors: {
-                        base: '#09090b', // zinc-950
-                        surface: '#18181b', // zinc-900
+                        base: '#000000',
+                        surface: '#0a0a0a',
+                        card: '#111111',
                         accent: {
                             red: '#ff004d',
                             green: '#00ff41',
@@ -48,411 +46,430 @@
     </script>
 
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #09090b;
-            color: #fafafa;
-            overflow-x: hidden;
-            -webkit-tap-highlight-color: transparent;
+        /* Base & Scrollbar */
+        body { font-family: 'Inter', sans-serif; background-color: #000000; color: #ffffff; overflow-x: hidden; }
+        ::-webkit-scrollbar { width: 2px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+
+        /* Animations */
+        @keyframes scanLine {
+            0% { top: 0%; opacity: 0.8; }
+            100% { top: 100%; opacity: 0.1; }
         }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: #18181b; }
-        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 2px; }
-
-        /* Dynamic Input Resizing */
-        .input-dynamic {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            resize: none;
-            overflow-y: auto;
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) filter: hue-rotate(90deg) }
+            40% { transform: translate(-2px, -2px) filter: hue-rotate(180deg) }
+            60% { transform: translate(2px, 2px) filter: hue-rotate(270deg) }
+            80% { transform: translate(2px, -2px) filter: hue-rotate(360deg) }
+            100% { transform: translate(0) }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
         
-        /* Glassmorphism Cards */
-        .glass {
-            background: rgba(24, 24, 27, 0.6);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
+        .scan-line { animation: scanLine 2s linear forwards; }
+        .glitch-effect { animation: glitch 0.5s cubic-bezier(.25, .46, .45, .94) both; }
+        .fade-in { animation: fadeIn 0.5s ease forwards; }
+        
+        /* Inputs auto-resize & styling */
+        textarea {
+            resize: none;
+            overflow-y: auto;
+            font-size: 16px; /* Prevents iOS zoom */
         }
-
-        /* Scan Animation */
-        @keyframes scan-flash {
-            0% { opacity: 0; transform: scale(0.95); }
-            50% { opacity: 1; }
-            100% { opacity: 0; transform: scale(1.05); }
-        }
-        .flash-overlay {
-            animation: scan-flash 0.4s ease-out;
-        }
-
-        /* Success Pulse */
-        @keyframes success-pulse {
-            0% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(0, 255, 65, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(0, 255, 65, 0); }
-        }
-        .scan-success {
-            animation: success-pulse 0.8s ease-out;
-        }
+        
+        /* Neon Glow utility */
+        .glow-red { box-shadow: 0 0 10px rgba(255, 0, 77, 0.5); }
+        .glow-green { box-shadow: 0 0 10px rgba(0, 255, 65, 0.5); }
+        .glow-blue { box-shadow: 0 0 10px rgba(0, 136, 255, 0.5); }
     </style>
 </head>
-<body class="h-screen flex flex-col font-body">
+<body class="min-h-screen flex flex-col font-body">
 
-    <!-- ======================= -->
-    <!-- NAVIGATION BAR (Mobile Bottom) -->
-    <!-- ======================= -->
-    <nav class="fixed bottom-0 left-0 right-0 z-50 glass border-t border-white/10 md:top-0 md:bottom-auto md:border-b md:border-t-0">
-        <div class="max-w-4xl mx-auto flex justify-around items-center h-16 md:h-auto md:py-2">
-            <!-- Logo (Hidden on Mobile Bottom Nav) -->
-            <div class="hidden md:flex items-center space-x-2 px-4">
-                <div class="flex space-x-1">
-                    <div class="w-2 h-2 rounded-full bg-accent-red"></div>
-                    <div class="w-2 h-2 rounded-full bg-accent-green"></div>
-                    <div class="w-2 h-2 rounded-full bg-accent-blue"></div>
+    <!-- ===================== -->
+    <!-- HEADER (Fixed) -->
+    <!-- ===================== -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-base/90 backdrop-blur-lg border-b border-white/5 h-16 flex items-center justify-between px-4">
+        <!-- Live Preview Mini -->
+        <div class="w-[60px] h-[60px] p-1 bg-card rounded-lg border border-white/10">
+            <canvas id="live-mini-canvas" class="w-full h-full"></canvas>
+        </div>
+        
+        <!-- Title -->
+        <div class="text-center flex-1">
+            <h1 class="font-heading font-bold text-lg tracking-tight text-white">RGB QR ULTRA <span class="text-accent-green text-xs">v4.0</span></h1>
+        </div>
+        
+        <!-- Menu / Info -->
+        <button onclick="openModal('menu')" class="w-[60px] flex justify-end">
+            <svg class="w-6 h-6 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
+    </header>
+
+    <!-- ===================== -->
+    <!-- MAIN CONTENT -->
+    <!-- ===================== -->
+    <main class="flex-1 pt-20 pb-24 relative">
+        
+        <!-- TAB: GENERATION -->
+        <section id="tab-generation" class="tab-content active px-4 flex flex-col h-full">
+            
+            <!-- Inputs Area (Top Priority) -->
+            <div class="space-y-3 mb-4">
+                <div class="relative">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent-red rounded-full"></div>
+                    <textarea id="input-r" class="w-full bg-surface border border-white/10 rounded-xl p-3 pl-4 text-white focus:outline-none focus:border-accent-red transition-all" rows="1" placeholder="Red Channel..."></textarea>
                 </div>
-                <span class="font-heading font-bold text-lg tracking-tight">RGB QR</span>
+                <div class="relative">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent-green rounded-full"></div>
+                    <textarea id="input-g" class="w-full bg-surface border border-white/10 rounded-xl p-3 pl-4 text-white focus:outline-none focus:border-accent-green transition-all" rows="1" placeholder="Green Channel..."></textarea>
+                </div>
+                <div class="relative">
+                    <div class="absolute left-0 top-0 bottom-0 w-1 bg-accent-blue rounded-full"></div>
+                    <textarea id="input-b" class="w-full bg-surface border border-white/10 rounded-xl p-3 pl-4 text-white focus:outline-none focus:border-accent-blue transition-all" rows="1" placeholder="Blue Channel..."></textarea>
+                </div>
             </div>
 
-            <!-- Tabs -->
-            <button onclick="switchTab('gen')" id="tab-btn-gen" class="flex flex-col md:flex-row items-center justify-center w-full md:w-auto md:px-6 py-2 transition-colors text-white/50 hover:text-white focus:outline-none">
-                <svg class="w-6 h-6 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v16m8-8H4"></path></svg>
-                <span class="text-xs mt-1 md:mt-0 md:text-sm font-medium">Генерація</span>
-            </button>
-            <button onclick="switchTab('scan')" id="tab-btn-scan" class="flex flex-col md:flex-row items-center justify-center w-full md:w-auto md:px-6 py-2 transition-colors text-white/50 hover:text-white focus:outline-none">
-                <svg class="w-6 h-6 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                <span class="text-xs mt-1 md:mt-0 md:text-sm font-medium">Сканер</span>
-            </button>
-        </div>
-    </nav>
-
-    <!-- ======================= -->
-    <!-- MAIN CONTENT AREA -->
-    <!-- ======================= -->
-    <main class="flex-1 overflow-y-auto pt-4 pb-20 md:pt-20 md:pb-4">
-
-        <!-- TAB: GENERATOR -->
-        <div id="tab-gen" class="max-w-4xl mx-auto px-4 hidden">
-            <div class="flex flex-col-reverse md:flex-col h-full">
-                
-                <!-- QR OUTPUT AREA (Top on Mobile/Desktop) -->
-                <div class="flex flex-col items-center justify-center flex-1 w-full my-4 relative">
-                    <!-- Live Byte Counter & Status -->
-                    <div class="text-center mb-4">
-                        <div class="inline-flex items-center px-4 py-1 rounded-full glass text-xs text-white/70">
-                            <span id="byte-counter">0 байт приховано в RGB-каналах</span>
-                        </div>
-                    </div>
-
-                    <!-- QR Display Container -->
-                    <div id="qr-container" class="relative w-full max-w-sm aspect-square bg-white/5 rounded-3xl overflow-hidden flex items-center justify-center border border-white/10 shadow-2xl transition-all duration-500">
-                        <!-- Placeholder -->
-                        <div id="qr-placeholder" class="text-center text-white/20 p-8">
-                            <svg class="w-16 h-16 mx-auto mb-4 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"></path></svg>
-                            <p class="font-mono text-sm">Введіть текст</p>
-                        </div>
-                        <!-- Canvas -->
-                        <canvas id="qr-canvas" class="hidden w-full h-full p-4 object-contain"></canvas>
-                    </div>
-
-                    <!-- Download Button -->
-                    <button onclick="downloadQR()" id="btn-download" class="mt-6 px-6 py-3 bg-white text-black font-bold rounded-xl text-sm uppercase tracking-wider hover:bg-zinc-200 transition-all opacity-0 pointer-events-none focus:outline-none">
-                        Скачати PNG
-                    </button>
-                </div>
-
-                <!-- INPUTS STACK (Optimized for Keyboard) -->
-                <div id="inputs-wrapper" class="w-full space-y-2 transition-all duration-300">
-                    <!-- Red Channel -->
-                    <div class="input-group relative rounded-2xl overflow-hidden glass focus-within:bg-surface/80 focus-within:ring-1 focus-within:ring-accent-red">
-                        <div class="flex items-center px-3 pt-2 text-accent-red text-xs font-mono">
-                            <span class="w-2 h-2 bg-accent-red rounded-full mr-2"></span> RED CHANNEL
-                        </div>
-                        <textarea id="input-r" rows="1" class="input-dynamic w-full bg-transparent border-none p-3 text-sm text-white focus:outline-none placeholder-white/20" placeholder="Дані для червоного..."></textarea>
-                    </div>
-
-                    <!-- Green Channel -->
-                    <div class="input-group relative rounded-2xl overflow-hidden glass focus-within:bg-surface/80 focus-within:ring-1 focus-within:ring-accent-green">
-                        <div class="flex items-center px-3 pt-2 text-accent-green text-xs font-mono">
-                            <span class="w-2 h-2 bg-accent-green rounded-full mr-2"></span> GREEN CHANNEL
-                        </div>
-                        <textarea id="input-g" rows="1" class="input-dynamic w-full bg-transparent border-none p-3 text-sm text-white focus:outline-none placeholder-white/20" placeholder="Дані для зеленого..."></textarea>
-                    </div>
-
-                    <!-- Blue Channel -->
-                    <div class="input-group relative rounded-2xl overflow-hidden glass focus-within:bg-surface/80 focus-within:ring-1 focus-within:ring-accent-blue">
-                        <div class="flex items-center px-3 pt-2 text-accent-blue text-xs font-mono">
-                            <span class="w-2 h-2 bg-accent-blue rounded-full mr-2"></span> BLUE CHANNEL
-                        </div>
-                        <textarea id="input-b" rows="1" class="input-dynamic w-full bg-transparent border-none p-3 text-sm text-white focus:outline-none placeholder-white/20" placeholder="Дані для синього..."></textarea>
-                    </div>
-                </div>
-
+            <!-- QR Output Area (Grows on focus) -->
+            <div class="flex-1 flex flex-col items-center justify-center relative mb-4">
+                 <div id="qr-placeholder" class="absolute inset-0 flex items-center justify-center text-white/10 text-sm">Введіть текст для генерації</div>
+                 <canvas id="qr-canvas" class="w-full max-w-sm aspect-square bg-white rounded-3xl shadow-2xl transition-all duration-500"></canvas>
+                 
+                 <!-- Status Bar -->
+                 <div id="gen-status" class="mt-4 text-xs font-mono text-white/50 tracking-wider hidden">
+                     <span id="gen-bytes">0</span> байт приховано в RGB-каналах
+                 </div>
             </div>
-        </div>
+
+            <!-- Actions -->
+            <div class="flex gap-3">
+                <button onclick="downloadQR()" class="flex-1 py-4 bg-white text-black font-bold rounded-2xl text-sm uppercase tracking-wider active:scale-95 transition-transform">
+                    Скачати PNG
+                </button>
+            </div>
+        </section>
 
         <!-- TAB: SCANNER -->
-        <div id="tab-scan" class="max-w-4xl mx-auto px-4 hidden flex flex-col h-full">
+        <section id="tab-scanner" class="tab-content hidden px-4 flex flex-col h-full">
             
-            <!-- Camera/Source Area (Max 40% height on mobile) -->
-            <div class="relative w-full h-[35vh] md:h-[40vh] bg-black/50 rounded-3xl overflow-hidden border border-white/10 flex items-center justify-center">
+            <!-- Scanner Viewport -->
+            <div class="relative w-full aspect-square max-h-[45vh] bg-surface rounded-3xl overflow-hidden border border-white/10 mb-4">
                 
-                <!-- Video Stream -->
-                <video id="video" class="absolute inset-0 w-full h-full object-cover hidden" playsinline></video>
-                <canvas id="scan-canvas" class="hidden"></canvas>
+                <!-- Camera / Image Display -->
+                <video id="video-stream" class="absolute inset-0 w-full h-full object-cover hidden" playsinline></video>
+                <canvas id="image-canvas" class="absolute inset-0 w-full h-full object-contain hidden"></canvas>
                 
-                <!-- Targeting Frame -->
-                <div id="scanner-frame" class="absolute w-48 h-48 border-2 border-white/30 rounded-2xl transition-all duration-300 hidden">
-                    <div class="absolute top-0 left-0 w-6 h-6 border-t-2 border-l-2 border-accent-green rounded-tl-xl"></div>
-                    <div class="absolute top-0 right-0 w-6 h-6 border-t-2 border-r-2 border-accent-green rounded-tr-xl"></div>
-                    <div class="absolute bottom-0 left-0 w-6 h-6 border-b-2 border-l-2 border-accent-green rounded-bl-xl"></div>
-                    <div class="absolute bottom-0 right-0 w-6 h-6 border-b-2 border-r-2 border-accent-green rounded-br-xl"></div>
-                    <!-- Scanning line effect -->
-                    <div class="scan-line w-full h-0.5 bg-accent-green/50 absolute top-0 shadow-lg" style="box-shadow: 0 0 10px #00ff41; top: 0%; animation: scanMove 2s linear infinite;"></div>
+                <!-- Scanning Overlay Elements -->
+                <div id="scan-overlay" class="absolute inset-0 pointer-events-none hidden">
+                    <div class="absolute inset-4 border-2 border-white/20 rounded-2xl"></div>
+                    <div id="scan-line-box" class="absolute w-full h-1 bg-accent-green/50 top-0 shadow-lg" style="box-shadow: 0px 0px 10px #00ff41;"></div>
                 </div>
+                
+                <!-- Success Flash Overlay -->
+                <div id="flash-overlay" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-300"></div>
 
-                <!-- Controls (Overlaid) -->
-                <div id="scan-controls" class="absolute inset-0 flex flex-col items-center justify-center z-20 bg-base/80 backdrop-blur-sm transition-opacity">
-                    <p class="text-white/50 mb-4 text-sm">Оберіть джерело</p>
+                <!-- Placeholder / Controls -->
+                <div id="scan-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-card z-10">
                     <div class="flex gap-4">
-                        <button onclick="startCamera()" class="flex flex-col items-center px-6 py-4 bg-surface hover:bg-zinc-800 rounded-2xl transition-colors focus:outline-none">
-                            <svg class="w-8 h-8 mb-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                            <span class="text-xs font-bold text-white/80">КАМЕРА</span>
+                        <button onclick="startCamera()" class="flex flex-col items-center gap-2 p-6 bg-base rounded-2xl hover:bg-white/5 active:scale-95 transition-transform">
+                            <svg class="w-8 h-8 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            <span class="text-xs text-white/70 font-medium">КАМЕРА</span>
                         </button>
-                        <button onclick="document.getElementById('file-input').click()" class="flex flex-col items-center px-6 py-4 bg-surface hover:bg-zinc-800 rounded-2xl transition-colors focus:outline-none">
-                            <svg class="w-8 h-8 mb-2 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                            <span class="text-xs font-bold text-white/80">ФАЙЛ</span>
+                        <button onclick="document.getElementById('file-input').click()" class="flex flex-col items-center gap-2 p-6 bg-base rounded-2xl hover:bg-white/5 active:scale-95 transition-transform">
+                            <svg class="w-8 h-8 text-accent-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span class="text-xs text-white/70 font-medium">ФАЙЛ</span>
                         </button>
                         <input type="file" id="file-input" class="hidden" accept="image/*">
                     </div>
                 </div>
-
-                <!-- Flash Overlay -->
-                <div id="flash-overlay" class="absolute inset-0 bg-white z-30 opacity-0 pointer-events-none"></div>
             </div>
 
-            <!-- Results Area (Remaining 60% height) -->
-            <div class="flex-1 mt-4 space-y-3 overflow-y-auto pb-4">
-                
-                <!-- Header -->
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-xs font-bold text-white/40 uppercase tracking-wider">Результати декодування</span>
-                    <button onclick="copyAllResults()" id="btn-copy-all" class="hidden text-xs bg-white/10 hover:bg-white/20 px-3 py-1 rounded-lg transition-colors text-white">
-                        Копіювати всі дані
-                    </button>
-                </div>
-
-                <!-- Result Cards -->
-                <div id="res-r-box" class="result-box w-full p-4 bg-surface border-l-4 border-accent-red rounded-xl min-h-[80px] flex flex-col justify-center transition-all">
+            <!-- Results Area -->
+            <div class="flex-1 flex flex-col gap-3 overflow-y-auto">
+                <div id="res-r-box" class="w-full p-4 bg-card rounded-2xl border-l-4 border-accent-red min-h-[70px] flex flex-col justify-center">
                     <div class="text-[10px] font-bold text-accent-red mb-1 uppercase tracking-widest">Red Channel</div>
-                    <div id="res-r" class="text-sm text-white/90 font-mono break-all">Очікування сигналу...</div>
+                    <div id="res-r" class="text-sm text-white/90 font-mono break-all">Очікування...</div>
                 </div>
-
-                <div id="res-g-box" class="result-box w-full p-4 bg-surface border-l-4 border-accent-green rounded-xl min-h-[80px] flex flex-col justify-center transition-all">
+                <div id="res-g-box" class="w-full p-4 bg-card rounded-2xl border-l-4 border-accent-green min-h-[70px] flex flex-col justify-center">
                     <div class="text-[10px] font-bold text-accent-green mb-1 uppercase tracking-widest">Green Channel</div>
-                    <div id="res-g" class="text-sm text-white/90 font-mono break-all">Очікування сигналу...</div>
+                    <div id="res-g" class="text-sm text-white/90 font-mono break-all">Очікування...</div>
                 </div>
-
-                <div id="res-b-box" class="result-box w-full p-4 bg-surface border-l-4 border-accent-blue rounded-xl min-h-[80px] flex flex-col justify-center transition-all">
+                <div id="res-b-box" class="w-full p-4 bg-card rounded-2xl border-l-4 border-accent-blue min-h-[70px] flex flex-col justify-center">
                     <div class="text-[10px] font-bold text-accent-blue mb-1 uppercase tracking-widest">Blue Channel</div>
-                    <div id="res-b" class="text-sm text-white/90 font-mono break-all">Очікування сигналу...</div>
+                    <div id="res-b" class="text-sm text-white/90 font-mono break-all">Очікування...</div>
                 </div>
-
-                <div id="status-message" class="text-center text-white/30 text-xs pt-4"></div>
+                
+                <!-- Status Message -->
+                <div id="scan-status" class="text-center text-white/40 text-xs mt-2"></div>
             </div>
-        </div>
+        </section>
 
     </main>
 
-    <style>
-        @keyframes scanMove {
-            0% { top: 10%; }
-            50% { top: 90%; }
-            100% { top: 10%; }
-        }
-    </style>
+    <!-- ===================== -->
+    <!-- BOTTOM NAVIGATION -->
+    <!-- ===================== -->
+    <nav class="fixed bottom-0 left-0 right-0 z-50 bg-base/90 backdrop-blur-lg border-t border-white/10 h-20 flex items-center justify-around">
+        <button onclick="switchTab('generation')" id="nav-gen" class="flex flex-col items-center justify-center w-full h-full text-white focus:outline-none transition-colors">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Створити</span>
+        </button>
+        <button onclick="switchTab('scanner')" id="nav-scan" class="flex flex-col items-center justify-center w-full h-full text-white/40 focus:outline-none transition-colors">
+            <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+            <span class="text-[10px] font-bold uppercase tracking-wider">Сканер</span>
+        </button>
+    </nav>
 
+    <!-- ===================== -->
+    <!-- MODALS (Info Sections) -->
+    <!-- ===================== -->
+    <div id="modal-overlay" class="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300 flex items-center justify-center p-4" onclick="closeModal(e)">
+        <div id="modal-container" class="bg-surface w-full max-w-lg max-h-[80vh] rounded-3xl border border-white/10 overflow-hidden flex flex-col transform scale-95 transition-transform duration-300">
+            <div class="flex justify-between items-center p-6 border-b border-white/10">
+                <h2 id="modal-title" class="font-heading font-bold text-xl text-white"></h2>
+                <button onclick="closeModal()" class="text-white/50 hover:text-white text-2xl">&times;</button>
+            </div>
+            <div id="modal-body" class="p-6 overflow-y-auto text-white/80 text-sm leading-relaxed space-y-4"></div>
+        </div>
+    </div>
+
+    <!-- ===================== -->
+    <!-- SCRIPTS -->
+    <!-- ===================== -->
     <script>
-        // ========== STATE & CONFIG ==========
+        // --- STATE ---
         const state = {
-            lang: 'uk',
             stream: null,
-            scanLoop: null,
-            lastResults: { r: null, g: null, b: null },
-            successTriggered: false,
-            qrData: null
+            scanning: false,
+            loop: null,
+            success: false
         };
 
+        // --- DOM ELEMENTS ---
         const $ = id => document.getElementById(id);
+        const inputs = [$('input-r'), $('input-g'), $('input-b')];
+        
+        // --- CONTENT DB ---
+        const content = {
+            menu: {
+                title: "Меню",
+                body: `
+                    <div class="space-y-2">
+                        <button onclick="openModal('howto')" class="w-full text-left p-4 bg-card rounded-xl hover:bg-white/5 transition">Як користуватися</button>
+                        <button onclick="openModal('tech')" class="w-full text-left p-4 bg-card rounded-xl hover:bg-white/5 transition">Технологія</button>
+                        <button onclick="openModal('author')" class="w-full text-left p-4 bg-card rounded-xl hover:bg-white/5 transition">Автор</button>
+                    </div>
+                `
+            },
+            howto: {
+                title: "Як користуватися",
+                body: `<p>На цьому сайті ви можете створювати кольорові (спектральні) 2D-коди, де дані розподіляються по різних каналах, і тестувати їх зчитування з екрана.</p>
+                <p class="text-accent-red mt-4 text-xs font-bold">⚠️ Важливо: стабільне зчитування у друці не реалізоване в межах цього сайту. Для цього потрібні додаткові методи, описані в наукових публікаціях автора.</p>`
+            },
+            tech: {
+                title: "Технологія",
+                body: `<p>Ідея кольорових 2D-кодів полягає у збільшенні обсягу даних за рахунок використання кольорових каналів. У цифровому середовищі такі коди можуть працювати стабільно.</p>
+                <p class="mt-4">Однак при друці виникає проблема міжканального шуму: через особливості CMYK і поведінку пігментів порушується ізоляція каналів, і інформація починає змішуватися.</p>
+                <p class="mt-4 text-white/50 text-xs">Класичний чорно-білий QR-код був розроблений Масахіро Хара (Denso Wave, 1994). Цей проєкт демонструє принцип спектрального розподілу інформації.</p>`
+            },
+            author: {
+                title: "Автор",
+                body: `<p><strong>Михайло Кашкаров</strong> — сайнс-арт художник, який працює на перетині світлочутливого живопису, технологій і спектрального дизайну.</p>
+                <div class="mt-6 space-y-2 text-xs font-mono bg-base p-4 rounded-xl">
+                    <p>📚 <a href="https://zenodo.org/records/18895764" target="_blank" class="text-accent-blue hover:underline">Zenodo Publication</a></p>
+                    <p>📩 <a href="mailto:bakminsterfuler@gmail.com" class="text-accent-green hover:underline">bakminsterfuler@gmail.com</a></p>
+                    <p>🌐 <a href="https://astra31415926.github.io/" target="_blank" class="text-accent-red hover:underline">astra31415926.github.io</a></p>
+                </div>`
+            }
+        };
 
-        // Audio Context for Shutter Sound
-        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        function playShutterSound() {
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-            const oscillator = audioCtx.createOscillator();
-            const gainNode = audioCtx.createGain();
-            oscillator.connect(gainNode);
-            gainNode.connect(audioCtx.destination);
-            oscillator.frequency.value = 1200;
-            oscillator.type = 'sine';
-            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + 0.1);
-            oscillator.start(audioCtx.currentTime);
-            oscillator.stop(audioCtx.currentTime + 0.1);
-        }
+        // --- UTILS ---
+        
+        // UTF-8 Safe Encoding for QR
+        const utf8_to_b64 = ( str ) => {
+            try { return btoa(unescape(encodeURIComponent( str ))); } catch(e) { return str; }
+        };
+        // Actually we need raw bytes for QR lib, not b64. Just unescape(encodeURIComponent(str)) works for string length, but lib expects string.
+        // Correct approach for qrcode-generator: it handles utf-8 if we pass the string, but sometimes fails. Let's use the safe method:
+        const encodeData = (str) => {
+            // Some QR libs don't support UTF-8 auto-detection, we force it by converting to bytes implicitly
+            // But qrcode-generator 1.4.4 handles it well if we just pass the string.
+            return str;
+        };
+        const decodeData = (str) => {
+            try {
+                // If the QR contained UTF-8 bytes decoded as ISO-8859-1 by the scanner, we fix it
+                return decodeURIComponent(escape(str));
+            } catch(e) {
+                return str;
+            }
+        };
 
-        // ========== NAVIGATION ==========
+        // Audio Context for Shutter
+        const playShutter = () => {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.frequency.value = 1500;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.1, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.1);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.1);
+        };
+
+        // --- NAVIGATION ---
         function switchTab(tabName) {
-            // Reset states
+            // Reset Scanner if active
             if (state.stream) stopCamera();
-            state.successTriggered = false;
             
-            // UI Switching
-            document.querySelectorAll('[id^="tab-"]').forEach(el => {
-                if(el.classList.contains('max-w-4xl')) el.classList.add('hidden');
-            });
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             $(`tab-${tabName}`).classList.remove('hidden');
 
-            // Active Tab Button Styling
-            document.querySelectorAll('[id^="tab-btn-"]').forEach(btn => {
-                btn.classList.remove('text-white', 'font-bold');
-                btn.classList.add('text-white/50');
-            });
-            $(`tab-btn-${tabName}`).classList.remove('text-white/50');
-            $(`tab-btn-${tabName}`).classList.add('text-white', 'font-bold');
-
-            // Reset Scanner UI
-            if(tabName === 'scan') {
-                $('scan-controls').classList.remove('opacity-0', 'pointer-events-none');
-                $('status-message').innerText = "";
-                $('btn-copy-all').classList.add('hidden');
-            }
+            // Nav UI
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('text-white'));
+            document.querySelectorAll('nav button').forEach(b => b.classList.add('text-white/40'));
+            $(`nav-${tabName}`).classList.remove('text-white/40');
+            $(`nav-${tabName}`).classList.add('text-white');
         }
 
-        // ========== GENERATOR LOGIC ==========
-        const inputR = $('input-r');
-        const inputG = $('input-g');
-        const inputB = $('input-b');
-        const inputs = [inputR, inputG, inputB];
+        // --- MODAL SYSTEM ---
+        function openModal(id) {
+            const data = content[id];
+            $('modal-title').innerText = data.title;
+            $('modal-body').innerHTML = data.body;
+            
+            $('modal-overlay').classList.remove('hidden');
+            setTimeout(() => {
+                $('modal-overlay').classList.remove('opacity-0');
+                $('modal-container').classList.remove('scale-95');
+            }, 10);
+        }
 
-        // Auto-resize textareas
+        function closeModal(e) {
+            if (e && e.target !== $('modal-overlay')) return;
+            $('modal-overlay').classList.add('opacity-0');
+            $('modal-container').classList.add('scale-95');
+            setTimeout(() => {
+                $('modal-overlay').classList.add('hidden');
+            }, 300);
+        }
+
+        // --- GENERATION LOGIC ---
+        
+        // Auto-resize inputs
         inputs.forEach(input => {
-            input.addEventListener('input', () => {
-                // Resize logic
-                input.style.height = 'auto';
-                input.style.height = input.scrollHeight + 'px';
-                
-                // Generate QR
-                liveGenerate();
-            });
-
-            // Focus Logic for Mobile Optimization
-            input.addEventListener('focus', () => {
-                // On mobile, collapse other elements to make room for keyboard
-                // Logic can be expanded based on viewport height
-            });
-            input.addEventListener('blur', () => {
-                // Restore layout
+            input.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                generateQR();
             });
         });
 
-        // UTF-8 Encoder/Decoder
-        const utf8_encode = str => unescape(encodeURIComponent(str));
-        const utf8_decode = str => { try { return decodeURIComponent(escape(str)); } catch(e) { return str; } };
-
-        function liveGenerate() {
-            const rVal = inputR.value.trim() || ' ';
-            const gVal = inputG.value.trim() || ' ';
-            const bVal = inputB.value.trim() || ' ';
-
-            if (!inputR.value && !inputG.value && !inputB.value) {
-                $('qr-canvas').classList.add('hidden');
+        function generateQR() {
+            const rVal = $('input-r').value || ' ';
+            const gVal = $('input-g').value || ' ';
+            const bVal = $('input-b').value || ' ';
+            
+            const rBytes = new Blob([rVal]).size;
+            const gBytes = new Blob([gVal]).size;
+            const bBytes = new Blob([bVal]).size;
+            const totalBytes = rBytes + gBytes + bBytes;
+            
+            // Update Status
+            $('gen-status').classList.remove('hidden');
+            $('gen-bytes').innerText = totalBytes;
+            
+            // Check if empty
+            if(!$('input-r').value && !$('input-g').value && !$('input-b').value) {
+                $('qr-canvas').style.opacity = 0;
                 $('qr-placeholder').classList.remove('hidden');
-                $('byte-counter').innerText = "0 байт приховано";
-                $('btn-download').classList.add('opacity-0', 'pointer-events-none');
                 return;
             }
+            $('qr-canvas').style.opacity = 1;
+            $('qr-placeholder').classList.add('hidden');
 
-            // Calculate byte size
-            const totalBytes = new Blob([inputR.value + inputG.value + inputB.value]).size;
-            $('byte-counter').innerText = `+${totalBytes} байт приховано в RGB-каналах`;
-
-            // Generate QR Logic
+            // Generate Logic
+            // 1. Find Max Version
             let maxVer = 0;
-            const dataArr = [rVal, gVal, bVal];
+            const texts = [rVal, gVal, bVal];
             
-            // Find max version
-            dataArr.forEach(txt => {
+            texts.forEach(txt => {
                 try {
                     const qr = qrcode(0, 'M');
-                    qr.addData(utf8_encode(txt));
+                    qr.addData(txt); // Lib handles string
                     qr.make();
-                    maxVer = Math.max(maxVer, (qr.getModuleCount() - 17) / 4);
+                    const v = (qr.getModuleCount() - 17) / 4;
+                    if(v > maxVer) maxVer = v;
                 } catch(e) {}
             });
 
-            // Create QRs
-            const qrs = dataArr.map(txt => {
+            // 2. Create Synchronized QRs
+            const qrs = texts.map(txt => {
                 try {
                     const qr = qrcode(maxVer, 'M');
-                    qr.addData(utf8_encode(txt));
+                    qr.addData(txt);
                     qr.make();
                     return qr;
                 } catch(e) { return null; }
             });
 
-            // Render
-            const canvas = $('qr-canvas');
-            const ctx = canvas.getContext('2d');
-            const modCount = qrs[0].getModuleCount();
-            const size = 800; // High Res
-            const margin = 4;
-            const modSize = size / (modCount + margin * 2);
+            // 3. Render
+            renderQR(qrs, $('qr-canvas')); // Main
+            renderQR(qrs, $('live-mini-canvas')); // Header Mini
+        }
 
-            canvas.width = size;
-            canvas.height = size;
-            ctx.fillStyle = "#000000";
+        function renderQR(qrs, canvasEl) {
+            const modCount = qrs[0].getModuleCount();
+            const size = canvasEl.width; // Use set width
+            const modSize = size / modCount;
+            const ctx = canvasEl.getContext('2d');
+            
+            // Set resolution
+            canvasEl.width = size; canvasEl.height = size;
+            
+            ctx.fillStyle = '#FFFFFF'; // White background for readability
             ctx.fillRect(0, 0, size, size);
+            
+            ctx.fillStyle = '#000000'; // Default black if only one channel
 
             for(let y=0; y<modCount; y++) {
                 for(let x=0; x<modCount; x++) {
                     const r = qrs[0].isDark(y, x) ? 255 : 0;
                     const g = qrs[1].isDark(y, x) ? 255 : 0;
                     const b = qrs[2].isDark(y, x) ? 255 : 0;
+                    
                     if(r+g+b > 0) {
-                        ctx.fillStyle = `rgb(${r},${g},${b})`;
-                        ctx.fillRect((x+margin)*modSize, (y+margin)*modSize, modSize, modSize);
+                        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                        ctx.fillRect(x*modSize, y*modSize, modSize, modSize);
                     }
                 }
             }
-
-            state.qrData = canvas.toDataURL('image/png');
-            
-            $('qr-canvas').classList.remove('hidden');
-            $('qr-placeholder').classList.add('hidden');
-            $('btn-download').classList.remove('opacity-0', 'pointer-events-none');
         }
 
         function downloadQR() {
-            if(!state.qrData) return;
+            // Re-render in high res
+            const modCount = qrcode(0, 'M').getModuleCount(); // need to store qrs globally or regenerate
+            // Simple hack: Get data url from current canvas
             const link = document.createElement('a');
             link.download = 'rgb-qr-ultra.png';
-            link.href = state.qrData;
+            link.href = $('qr-canvas').toDataURL('image/png');
             link.click();
         }
 
-        // ========== SCANNER LOGIC ==========
-        const video = $('video');
-        const scanCanvas = $('scan-canvas');
-        const scanCtx = scanCanvas.getContext('2d');
-        
+        // --- SCANNER LOGIC ---
+
         // File Input
-        $('file-input').addEventListener('change', e => {
+        $('file-input').addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if(!file) return;
-            
+            if (!file) return;
             const reader = new FileReader();
-            reader.onload = evt => {
+            reader.onload = (evt) => {
                 processImage(evt.target.result);
             };
             reader.readAsDataURL(file);
@@ -461,39 +478,67 @@
         function processImage(src) {
             const img = new Image();
             img.onload = () => {
-                // Draw to hidden canvas
-                scanCanvas.width = img.width;
-                scanCanvas.height = img.height;
-                scanCtx.drawImage(img, 0, 0);
+                // Show image
+                const canvas = $('image-canvas');
+                const ctx = canvas.getContext('2d');
                 
-                // Visual feedback (flash)
-                triggerFlash();
+                // Set display size
+                const containerW = canvas.parentElement.clientWidth;
+                const containerH = canvas.parentElement.clientHeight;
                 
-                // Decode
-                const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
-                decodeAllChannels(imageData);
+                // Scale to fit
+                const scale = Math.min(containerW / img.width, containerH / img.height);
+                const w = img.width * scale;
+                const h = img.height * scale;
+                
+                canvas.width = w; canvas.height = h;
+                canvas.style.width = w+'px'; canvas.style.height = h+'px';
+                canvas.style.margin = 'auto'; // Center
+                canvas.style.top = (containerH - h)/2 + 'px';
+                
+                ctx.drawImage(img, 0, 0, w, h);
+                
+                // UI Switch
+                $('scan-placeholder').classList.add('hidden');
+                $('image-canvas').classList.remove('hidden');
+                
+                // Animation: Scan Line
+                startScanAnimation();
+                
+                // Logic: Wait for animation then decode
+                setTimeout(() => {
+                    const imageData = ctx.getImageData(0, 0, w, h);
+                    decodeLogic(imageData);
+                    
+                    // Fade out image
+                    $('image-canvas').style.opacity = '0';
+                    setTimeout(() => {
+                         $('image-canvas').classList.add('hidden');
+                         $('scan-placeholder').classList.remove('hidden');
+                    }, 500);
+                }, 2500);
             };
             img.src = src;
         }
 
-        async function startCamera() {
-            try {
-                state.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }});
-                video.srcObject = state.stream;
+        function startCamera() {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => {
+                state.stream = stream;
+                const video = $('video-stream');
+                video.srcObject = stream;
                 video.classList.remove('hidden');
-                
-                // UI Updates
-                $('scan-controls').classList.add('opacity-0', 'pointer-events-none');
-                $('scanner-frame').classList.remove('hidden');
-                $('status-message').innerText = "Наведіть камеру на код";
-                
                 video.play();
-                state.successTriggered = false;
                 
+                $('scan-placeholder').classList.add('hidden');
+                $('scan-overlay').classList.remove('hidden');
+                
+                state.scanning = true;
                 tick();
-            } catch(e) {
-                $('status-message').innerText = "Не вдалося отримати доступ до камери";
-            }
+            })
+            .catch(err => {
+                $('scan-status').innerText = "Не вдалося отримати доступ до камери";
+            });
         }
 
         function stopCamera() {
@@ -501,127 +546,139 @@
                 state.stream.getTracks().forEach(track => track.stop());
                 state.stream = null;
             }
-            video.classList.add('hidden');
-            $('scanner-frame').classList.add('hidden');
-            $('scan-controls').classList.remove('opacity-0', 'pointer-events-none');
-            if(state.scanLoop) cancelAnimationFrame(state.scanLoop);
+            state.scanning = false;
+            $('video-stream').classList.add('hidden');
+            $('scan-overlay').classList.add('hidden');
+            $('scan-placeholder').classList.remove('hidden');
         }
 
         function tick() {
-            if(!state.stream) return;
+            if (!state.scanning) return;
             
-            if(video.readyState === video.HAVE_ENOUGH_DATA) {
-                scanCanvas.width = video.videoWidth;
-                scanCanvas.height = video.videoHeight;
-                scanCtx.drawImage(video, 0, 0);
-                const imageData = scanCtx.getImageData(0, 0, scanCanvas.width, scanCanvas.height);
+            const video = $('video-stream');
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                const canvas = $('image-canvas'); // Reuse canvas
+                const ctx = canvas.getContext('2d');
                 
-                const found = decodeAllChannels(imageData, true); // Live mode
+                // Draw video frame to canvas for analysis
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.drawImage(video, 0, 0);
                 
-                // If found, we pause/resume or just keep running silently
-                if(found && !state.successTriggered) {
-                    state.successTriggered = true;
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                
+                // Check if we found something
+                if (decodeLogic(imageData, true)) {
+                    // Success! Stop looping, play sound, show flash
+                    state.scanning = false;
+                    playShutter();
                     triggerFlash();
-                    playShutterSound();
                     
-                    // Visual Success State
-                    $('scanner-frame').classList.add('scan-success');
-                    setTimeout(() => $('scanner-frame').classList.remove('scan-success'), 800);
-                    
-                    // Optional: Stop camera after success?
-                    // stopCamera(); 
+                    // Freeze frame for a moment
+                    setTimeout(() => {
+                        stopCamera();
+                    }, 2000);
                 }
             }
-            state.scanLoop = requestAnimationFrame(tick);
+            requestAnimationFrame(tick);
         }
 
-        function decodeAllChannels(imageData, isLive = false) {
+        function decodeLogic(imageData, isLive = false) {
             const w = imageData.width;
             const h = imageData.height;
             const data = imageData.data;
             
-            // Prepare Channel Buffers
-            const rBuff = new Uint8ClampedArray(w*h*4);
-            const gBuff = new Uint8ClampedArray(w*h*4);
-            const bBuff = new Uint8ClampedArray(w*h*4);
-
+            // Prepare channels
+            const chR = new Uint8ClampedArray(w*h*4);
+            const chG = new Uint8ClampedArray(w*h*4);
+            const chB = new Uint8ClampedArray(w*h*4);
+            
+            // Split channels (optimization: simple loop)
             for(let i=0; i<data.length; i+=4) {
-                rBuff[i] = rBuff[i+1] = rBuff[i+2] = data[i];
-                gBuff[i] = gBuff[i+1] = gBuff[i+2] = data[i+1];
-                bBuff[i] = bBuff[i+1] = bBuff[i+2] = data[i+2];
-                rBuff[i+3] = gBuff[i+3] = bBuff[i+3] = 255;
+                chR[i] = chR[i+1] = chR[i+2] = data[i];   // Red
+                chG[i] = chG[i+1] = chG[i+2] = data[i+1]; // Green
+                chB[i] = chB[i+1] = chB[i+2] = data[i+2]; // Blue
+                chR[i+3] = chG[i+3] = chB[i+3] = 255;
             }
 
             // Decode
-            const res = [
-                decodeChannel(new ImageData(rBuff, w, h)),
-                decodeChannel(new ImageData(gBuff, w, h)),
-                decodeChannel(new ImageData(bBuff, w, h))
-            ];
+            const rRes = jsQR(chR, w, h);
+            const gRes = jsQR(chG, w, h);
+            const bRes = jsQR(chB, w, h);
 
-            let count = 0;
-            const ids = ['res-r', 'res-g', 'res-b'];
-            const boxes = ['res-r-box', 'res-g-box', 'res-b-box'];
-            const colors = ['accent-red', 'accent-green', 'accent-blue'];
+            // Results
+            const foundR = rRes && rRes.data;
+            const foundG = gRes && gRes.data;
+            const foundB = bRes && bRes.data;
 
-            res.forEach((val, idx) => {
-                const el = $(ids[idx]);
-                const box = $(boxes[idx]);
-                if(val) {
-                    count++;
-                    const text = utf8_decode(val);
-                    if(el.innerText !== text) {
-                        el.innerText = text;
-                        // Animation
-                        box.classList.add('scale-[1.02]');
-                        setTimeout(() => box.classList.remove('scale-[1.02]'), 200);
-                    }
-                }
-            });
-
-            if(count > 0) {
-                $('status-message').innerText = `Успішно декодовано: ${count}/3`;
-                $('btn-copy-all').classList.remove('hidden');
-                return true;
+            if (foundR || foundG || foundB) {
+                updateResult('res-r', foundR ? rRes.data : null);
+                updateResult('res-g', foundG ? gRes.data : null);
+                updateResult('res-b', foundB ? bRes.data : null);
+                
+                $('scan-status').innerText = "";
+                
+                // Highlight border on success
+                $('scan-overlay').querySelector('div').style.borderColor = '#00ff41';
+                $('scan-overlay').querySelector('div').classList.add('glow-green');
+                
+                return true; // Success
             } else {
-                if(!isLive) $('status-message').innerText = "QR-код не знайдено або канали порожні";
-                return false;
+                if(!isLive) {
+                    $('scan-status').innerText = "QR не розпізнано. Спробуйте ще раз.";
+                }
+                return false; // Fail
             }
         }
 
-        function decodeChannel(imgData) {
-            const code = jsQR(imgData.data, imgData.width, imgData.height, { inversionAttempts: "attemptBoth" });
-            return code ? code.data : null;
+        function updateResult(id, data) {
+            const el = $(id);
+            const box = $(id + '-box');
+            if(data) {
+                el.innerText = decodeData(data);
+                box.classList.add('fade-in');
+                box.classList.add('glitch-effect');
+                setTimeout(() => box.classList.remove('glitch-effect'), 500);
+                
+                // Copy functionality
+                box.onclick = () => {
+                    navigator.clipboard.writeText(el.innerText);
+                    el.innerText = "Скопійовано!";
+                    setTimeout(() => el.innerText = decodeData(data), 1000);
+                };
+            }
+        }
+
+        function startScanAnimation() {
+            const line = $('scan-line-box');
+            line.classList.remove('hidden');
+            line.classList.add('scan-line');
+            
+            // Reset animation
+            setTimeout(() => {
+                line.classList.remove('scan-line');
+                line.classList.add('hidden');
+            }, 2500);
         }
 
         function triggerFlash() {
             const flash = $('flash-overlay');
-            flash.classList.add('flash-overlay');
-            flash.style.opacity = 1;
-            setTimeout(() => {
-                flash.style.opacity = 0;
-                flash.classList.remove('flash-overlay');
-            }, 400);
-        }
-
-        function copyAllResults() {
-            const r = $('res-r').innerText;
-            const g = $('res-g').innerText;
-            const b = $('res-b').innerText;
-            const text = `RED:\n${r}\n\nGREEN:\n${g}\n\nBLUE:\n${b}`;
+            flash.style.opacity = '0.8';
+            $('video-stream').classList.add('glitch-effect');
             
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = $('btn-copy-all');
-                const originalText = btn.innerText;
-                btn.innerText = "Скопійовано!";
-                setTimeout(() => btn.innerText = originalText, 2000);
-            });
+            setTimeout(() => {
+                flash.style.opacity = '0';
+                $('video-stream').classList.remove('glitch-effect');
+            }, 300);
         }
 
-        // Init
-        switchTab('gen');
+        // --- INIT ---
+        switchTab('generation');
+        // Initial render for mini canvas
+        const miniCtx = $('live-mini-canvas').getContext('2d');
+        $('live-mini-canvas').width = 60; $('live-mini-canvas').height = 60;
+        miniCtx.fillStyle = '#333'; miniCtx.fillRect(0,0,60,60);
 
     </script>
 </body>
 </html>
-```
