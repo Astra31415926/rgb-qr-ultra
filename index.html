@@ -9,19 +9,17 @@
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
         :root { --r: #ff2a2a; --g: #2aff2a; --b: #2a9fff; }
-        body { background: #000; color: #e0e0e0; font-family: ui-sans-serif, system-ui; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+        body { background: #000; color: #e0e0e0; font-family: ui-sans-serif, system-ui; overflow-x: hidden; }
         
         .input-ch { 
             background: #0a0a0a; border: 1px solid #1a1a1a; border-radius: 12px;
             padding: 16px; width: 100%; color: #fff; font-family: monospace;
-            resize: none; overflow: hidden; transition: all 0.3s ease; font-size: 14px;
+            resize: none; overflow: hidden; transition: all 0.4s ease; font-size: 14px;
         }
-        .input-ch:focus { outline: none; background: #0f0f0f; }
-        .input-r:focus { border-color: var(--r); box-shadow: 0 0 15px rgba(255,42,42,0.15); }
-        .input-g:focus { border-color: var(--g); box-shadow: 0 0 15px rgba(42,255,42,0.15); }
-        .input-b:focus { border-color: var(--b); box-shadow: 0 0 15px rgba(42,159,255,0.15); }
+        .input-ch:focus { outline: none; background: #0f0f0f; border-color: #444; }
+        .flash-active { border-color: #fff !important; box-shadow: 0 0 20px #fff !important; background: #222 !important; }
 
-        .scanner-container { position: relative; overflow: hidden; border-radius: 24px; background: #050505; border: 1px solid #111; }
+        .scanner-container { position: relative; overflow: hidden; border-radius: 24px; background: #050505; }
         .scan-line {
             position: absolute; top: 0; left: 0; width: 100%; height: 2px;
             background: #fff; box-shadow: 0 0 20px #fff; z-index: 10; display: none;
@@ -29,61 +27,66 @@
         @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
         .scanning .scan-line { display: block; animation: scan 2s linear infinite; }
         
-        .qr-preview { transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1); max-width: 320px; width: 100%; height: auto; border-radius: 16px; }
-        .qr-downloaded { opacity: 0.2; transform: scale(0.9) rotate(1deg); filter: blur(4px); }
+        .qr-preview { transition: all 0.8s ease; max-width: 320px; width: 100%; border-radius: 16px; }
+        .qr-faded { opacity: 0.1; filter: grayscale(1); transform: scale(0.95); }
         
-        .btn-action { background: #fff; color: #000; font-weight: 900; padding: 18px; border-radius: 16px; transition: 0.4s; width: 100%; letter-spacing: 0.1em; }
-        .btn-action:active { transform: scale(0.98); }
+        .btn-info { 
+            border: 1px solid #fff; color: #fff; font-weight: bold; padding: 12px 20px; 
+            border-radius: 50px; text-transform: uppercase; font-size: 10px; letter-spacing: 0.2em;
+            box-shadow: 0 0 10px rgba(255,255,255,0.1); transition: 0.3s;
+        }
+        .btn-info:hover { background: #fff; color: #000; box-shadow: 0 0 20px rgba(255,255,255,0.3); }
 
-        .modal-blur { backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px); }
         .hidden { display: none; }
+        .error-msg { color: #ff4444; font-size: 10px; font-weight: bold; letter-spacing: 2px; animation: pulse 1s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
     </style>
 </head>
 <body class="flex flex-col min-h-screen p-6 md:p-12">
 
-    <main id="menu" class="flex-1 flex flex-col items-center justify-center space-y-10 animate-in fade-in duration-1000">
+    <main id="menu" class="flex-1 flex flex-col items-center justify-center space-y-12">
         <div class="text-center">
-            <h1 class="text-5xl md:text-6xl font-black tracking-tighter uppercase mb-3">
+            <h1 class="text-5xl md:text-7xl font-black tracking-tighter uppercase mb-4">
                 <span style="color:var(--r)">R</span><span style="color:var(--g)">G</span><span style="color:var(--b)">B</span> QR System
             </h1>
-            <p class="text-zinc-600 uppercase text-[10px] tracking-[0.4em]">Spectral Encoding Interface</p>
+            <p class="text-zinc-600 uppercase text-[10px] tracking-[0.5em]">Spectral Integrity Interface</p>
         </div>
 
         <div class="grid grid-cols-1 gap-4 w-full max-w-sm">
-            <button onclick="showPage('gen')" class="group border border-zinc-900 p-8 rounded-3xl hover:bg-zinc-950 transition-all flex flex-col items-center gap-3">
-                <span class="text-3xl group-hover:scale-110 transition">⊕</span>
+            <button onclick="showPage('gen')" class="border border-zinc-900 p-8 rounded-3xl hover:bg-zinc-950 transition-all flex flex-col items-center gap-2">
                 <span class="font-bold tracking-widest text-xs">ГЕНЕРАЦІЯ / GENERATION</span>
             </button>
-            <button onclick="showPage('scan')" class="group border border-zinc-900 p-8 rounded-3xl hover:bg-zinc-950 transition-all flex flex-col items-center gap-3">
-                <span class="text-3xl group-hover:scale-110 transition">☌</span>
+            <button onclick="showPage('scan')" class="border border-zinc-900 p-8 rounded-3xl hover:bg-zinc-950 transition-all flex flex-col items-center gap-2">
                 <span class="font-bold tracking-widest text-xs">СКАНУВАННЯ / SCANNING</span>
             </button>
         </div>
 
-        <div class="flex flex-wrap justify-center gap-6 mt-4">
-            <button onclick="openModal('tech')" class="text-[9px] tracking-[0.3em] text-zinc-500 hover:text-white transition uppercase underline-offset-8 hover:underline">[ ТЕХНОЛОГІЯ ]</button>
-            <button onclick="openModal('author')" class="text-[9px] tracking-[0.3em] text-zinc-500 hover:text-white transition uppercase underline-offset-8 hover:underline">[ АВТОР ]</button>
+        <div class="flex gap-4">
+            <button onclick="openModal('tech')" class="btn-info">[ ТЕХНОЛОГІЯ ]</button>
+            <button onclick="openModal('author')" class="btn-info">[ АВТОР ]</button>
         </div>
     </main>
 
-    <section id="page-gen" class="hidden max-w-xl mx-auto w-full space-y-8">
-        <button onclick="goBack()" class="text-[10px] tracking-widest text-zinc-600 hover:text-white transition">← НАЗАД / BACK</button>
-        <div class="space-y-4">
-            <textarea id="in-r" class="input-ch input-r" placeholder="RED CHANNEL DATA..." rows="1" oninput="autoGrow(this); liveGen()"></textarea>
-            <textarea id="in-g" class="input-ch input-g" placeholder="GREEN CHANNEL DATA..." rows="1" oninput="autoGrow(this); liveGen()"></textarea>
-            <textarea id="in-b" class="input-ch input-b" placeholder="BLUE CHANNEL DATA..." rows="1" oninput="autoGrow(this); liveGen()"></textarea>
+    <section id="page-gen" class="hidden max-w-xl mx-auto w-full space-y-6">
+        <button onclick="goBack()" class="text-[10px] tracking-widest text-zinc-600 hover:text-white transition">← BACK</button>
+        <div class="space-y-3">
+            <textarea id="in-r" class="input-ch" placeholder="RED CHANNEL..." rows="1" oninput="autoGrow(this); liveGen()"></textarea>
+            <textarea id="in-g" class="input-ch" placeholder="GREEN CHANNEL..." rows="1" oninput="autoGrow(this); liveGen()"></textarea>
+            <textarea id="in-b" class="input-ch" placeholder="BLUE CHANNEL..." rows="1" oninput="autoGrow(this); liveGen()"></textarea>
         </div>
         <div id="gen-result" class="hidden flex flex-col items-center gap-8 py-4">
             <canvas id="qr-canvas" class="qr-preview shadow-2xl"></canvas>
-            <button id="btn-dl" onclick="downloadQR()" class="btn-action uppercase">СКАЧАТИ PNG</button>
+            <div id="gen-actions" class="w-full flex flex-col gap-4">
+                <button id="btn-dl" onclick="downloadQR()" class="bg-white text-black font-black p-5 rounded-2xl uppercase tracking-widest">СКАЧАТИ PNG</button>
+            </div>
         </div>
     </section>
 
     <section id="page-scan" class="hidden max-w-xl mx-auto w-full space-y-8">
-        <button onclick="goBack()" class="text-[10px] tracking-widest text-zinc-600 hover:text-white transition">← НАЗАД / BACK</button>
+        <button onclick="goBack()" class="text-[10px] tracking-widest text-zinc-600 hover:text-white transition">← BACK</button>
         <div id="scanner-box" class="scanner-container aspect-square relative shadow-2xl">
             <div class="scan-line"></div>
-            <video id="video" class="w-full h-full object-cover grayscale opacity-30" playsinline></video>
+            <video id="video" class="w-full h-full object-cover grayscale opacity-20" playsinline></video>
             <img id="upload-preview" class="absolute inset-0 w-full h-full object-contain hidden bg-black">
             <div id="scan-controls" class="absolute inset-0 flex items-center justify-center gap-6 z-20">
                 <button onclick="startCamera()" class="w-16 h-16 bg-white/5 hover:bg-white/10 rounded-full flex items-center justify-center transition border border-white/10 text-xl">📷</button>
@@ -91,75 +94,91 @@
             </div>
             <input type="file" id="file-in" class="hidden" accept="image/*">
         </div>
-        <div id="results" class="grid gap-3">
-            <div id="res-r" class="p-5 rounded-2xl bg-zinc-950 border border-zinc-900 text-[11px] font-mono text-red-500 transition-all">RED: ---</div>
-            <div id="res-g" class="p-5 rounded-2xl bg-zinc-950 border border-zinc-900 text-[11px] font-mono text-green-500 transition-all">GREEN: ---</div>
-            <div id="res-b" class="p-5 rounded-2xl bg-zinc-950 border border-zinc-900 text-[11px] font-mono text-blue-500 transition-all">BLUE: ---</div>
+        <div id="scan-error" class="hidden text-center error-msg">СИГНАЛ НЕ РОЗПІЗНАНО / SIGNAL LOST</div>
+        <div id="results" class="grid gap-2">
+            <div id="res-r" class="p-4 rounded-xl bg-zinc-950 border border-zinc-900 text-[11px] font-mono text-red-500">RED: ---</div>
+            <div id="res-g" class="p-4 rounded-xl bg-zinc-950 border border-zinc-900 text-[11px] font-mono text-green-500">GREEN: ---</div>
+            <div id="res-b" class="p-4 rounded-xl bg-zinc-950 border border-zinc-900 text-[11px] font-mono text-blue-500">BLUE: ---</div>
         </div>
     </section>
 
-    <div id="modal-overlay" class="hidden fixed inset-0 z-50 modal-blur bg-black/90 flex flex-col p-8 overflow-y-auto animate-in fade-in duration-300">
+    <div id="modal-overlay" class="hidden fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col p-8 overflow-y-auto">
         <div class="max-w-2xl mx-auto w-full mb-20">
-            <div class="flex justify-between items-center mb-16 sticky top-0 py-4 bg-black/10">
-                <button onclick="closeModal()" class="text-[10px] tracking-[0.3em] text-zinc-500 hover:text-white">[ ЗАКРИТИ × ]</button>
-                <div class="flex gap-4 text-[11px] font-black">
-                    <button onclick="setLang('ua')" id="btn-ua" class="text-white">UA</button>
-                    <button onclick="setLang('en')" id="btn-en" class="text-zinc-700">EN</button>
+            <div class="flex justify-between items-center mb-16 sticky top-0 py-4">
+                <button onclick="closeModal()" class="text-[10px] tracking-widest text-zinc-500">[ ЗАКРИТИ × ]</button>
+                <div class="flex gap-4 text-[11px] font-bold">
+                    <button onclick="setLang('ua')" id="btn-ua" class="text-white border-b border-white">UA</button>
+                    <button onclick="setLang('en')" id="btn-en" class="text-zinc-600">EN</button>
                 </div>
             </div>
-            <article id="modal-body" class="space-y-10 leading-relaxed text-sm text-zinc-400 font-light text-justify"></article>
-            <div class="mt-16 pt-10 border-t border-zinc-900 flex flex-col gap-6">
-                <a href="https://doi.org/10.5281/zenodo.18895764" target="_blank" class="group flex items-center justify-between text-[10px] font-mono tracking-widest text-zinc-500 hover:text-white transition">
-                    <span>VIEW RESEARCH [ZENODO DOI]</span><span>→</span>
-                </a>
-                <a href="https://astra31415926.github.io/" target="_blank" class="group flex items-center justify-between text-[10px] font-mono tracking-widest text-zinc-500 hover:text-white transition">
-                    <span>OFFICIAL WEBSITE [ASTRA314]</span><span>→</span>
-                </a>
-            </div>
+            <article id="modal-body" class="space-y-8 leading-relaxed text-sm text-zinc-400 font-light text-justify"></article>
         </div>
     </div>
 
-    <audio id="shutter" src="https://www.soundjay.com/mechanical/camera-shutter-click-01.mp3"></audio>
+    <audio id="snd-shutter" src="https://www.soundjay.com/mechanical/camera-shutter-click-01.mp3"></audio>
+    <audio id="snd-success" src="https://www.soundjay.com/buttons/button-20.mp3"></audio>
 
 <script>
     let activeStream = null, currentLang = 'ua', activeType = null;
-    const shutter = document.getElementById('shutter');
+    const shutter = document.getElementById('snd-shutter'), successSnd = document.getElementById('snd-success');
 
     const texts = {
         ua: {
-            tech: `
-                <h2 class="text-3xl font-black text-white uppercase tracking-tighter">Кольорові QR-коди — новий погляд</h2>
-                <p>Ідея кольорових QR-кодів — збільшувати обсяг даних за рахунок використання кольорових каналів — не нова. Однак при переході в фізичний світ вона стикається з фундаментальною проблемою: <b>межканальним шумом</b>.</p>
-                <p>При друці відбувається порушення ізоляції каналів — інформація з одного каналу частково «просочується» в інший. Цей проект націлений на вирішення цієї проблеми за допомогою моделі <b>SCI Universal Model</b>.</p>
-                <p>Ми використовуємо нормалізацію спектрального відгуку, що дозволяє стабілізувати зчитування даних навіть з фізичних об'єктів складної структури.</p>`,
-            author: `
-                <h2 class="text-3xl font-black text-white uppercase tracking-tighter italic">Михайло Кашкаров</h2>
-                <p class="text-white font-bold tracking-widest uppercase text-xs">Художник та Дослідник</p>
-                <p>Михайло працює на перетині експериментального живопису та спектрального дизайну. Його практика об'єднує художній експеримент та наукові принципи взаємодії світла та поверхні.</p>
-                <p>В основі роботи — світлочутлива живопис. Від полотна до даних, від візуального сприйняття до керованих спектральних систем. Модель SCI стала результатом перетворення інтуїтивних експериментів у відтворювану систему.</p>`
+            tech: `<h2 class="text-2xl font-bold text-white mb-6 uppercase">Кольорові QR-коди — новий погляд</h2>
+                <p>Ідея кольорових QR-кодів — збільшувати обсяг даних за рахунок розподілу інформації по кольорових каналах — не нова. У цифровому середовищі такі коди можуть зчитуватися досить стабільно.</p>
+                <p>Однак при друці виникає ключова проблема — <b>міжканальний шум</b>. Через особливості CMYK і поведінку пігментів порушується ізоляція каналів: інформація починає змішуватися, що робить зчитування нестабільним.</p>
+                <p>Класичний чорно-білий QR-код був розроблений Масахіро Хара (Denso Wave, 1994). Цей проєкт демонструє принцип спектрального розподілу та звертає увагу на проблеми, що обмежують використання таких систем у друці.</p>
+                <div class="bg-zinc-900/50 p-6 rounded-2xl mt-8 border border-zinc-800">
+                    <h3 class="text-white text-xs font-bold uppercase mb-4 tracking-widest">📝 Як користуватися</h3>
+                    <ul class="space-y-2 text-xs">
+                        <li>• Створюйте спектральні коди, розподіляючи дані по каналах.</li>
+                        <li>• Тестуйте зчитування безпосередньо з екрана.</li>
+                        <li>• Важливо: для друку потрібні методи, описані в розділі АВТОР.</li>
+                    </ul>
+                </div>`,
+            author: `<h2 class="text-2xl font-bold text-white mb-6 uppercase italic">Михайло Кашкаров</h2>
+                <p>Сайнс-арт художник, який працює на перетині світлочутливого живопису, технологій і спектрального дизайну. Його практика поєднує мистецтво і науку: оптику та спектральні властивості матеріалів.</p>
+                <p>В основі роботи — дослідження спектрального відгуку: як різні діапазони світла взаємодіють із пігментом і поверхнею.</p>
+                <div class="grid gap-4 mt-10">
+                    <p class="text-[10px] uppercase tracking-widest text-white mb-2">Публікації / Resources:</p>
+                    <a href="https://zenodo.org/records/18895764" target="_blank" class="text-xs text-zinc-500 hover:text-white border-b border-zinc-900 pb-2 flex justify-between">Zenodo Research <span>→</span></a>
+                    <a href="https://medium.com/@Bakminsterfuler/sci-universal-model-deterministic-spectral-response-normalization-905efe92e766" target="_blank" class="text-xs text-zinc-500 hover:text-white border-b border-zinc-900 pb-2 flex justify-between">Medium Article <span>→</span></a>
+                    <a href="https://telegra.ph/White-Paper-SCI-Encoding--Tehnolog%D1%96ya-spektralnoi-c%D1%96l%D1%96snost%D1%96-kanal%D1%96v-dlya-kolorovih-2D-kod%D1%96v-02-22" target="_blank" class="text-xs text-zinc-500 hover:text-white border-b border-zinc-900 pb-2 flex justify-between">White Paper <span>→</span></a>
+                    <a href="https://astra31415926.github.io/" target="_blank" class="text-xs text-zinc-500 hover:text-white border-b border-zinc-900 pb-2 flex justify-between">Official Website <span>→</span></a>
+                </div>`
         },
         en: {
-            tech: `
-                <h2 class="text-3xl font-black text-white uppercase tracking-tighter">Color QR Codes — A New Perspective</h2>
-                <p>The concept of color QR codes aims to expand data capacity by utilizing spectral channels. However, in the physical world, this concept fails due to <b>cross-channel noise</b>.</p>
-                <p>During printing (CMYK, pigments), channels leak into one another, destroying code stability. This project addresses this through the <b>SCI Universal Model: Deterministic Spectral Response Normalization</b>.</p>
-                <p>This method stabilizes data retrieval from complex physical surfaces, turning art-driven research into a functional technological tool.</p>`,
-            author: `
-                <h2 class="text-3xl font-black text-white uppercase tracking-tighter italic">Mykhailo Kashkarov</h2>
-                <p class="text-white font-bold tracking-widest uppercase text-xs">Artist & Researcher</p>
-                <p>Mykhailo works at the intersection of experimental painting, light-sensitive technology, and spectral design. His practice merges artistic experiment with scientific principles of light reflection.</p>
-                <p>From canvas to data, from visual perception to controlled spectral systems. His experience in light-sensitive art led to the SCI model, ensuring spectral codes remain robust under real-world lighting and printing conditions.</p>`
+            tech: `<h2 class="text-2xl font-bold text-white mb-6 uppercase">Color QR Codes — A New Perspective</h2>
+                <p>The idea of increasing data capacity through color channels is not new. Digitally, these codes can be read quite stably. However, physical printing introduces <b>cross-channel noise</b>.</p>
+                <p>Due to CMYK properties and pigment behavior, channel isolation is compromised. Information "leaks," making reading unstable. This project demonstrates spectral distribution principles and addresses these printing limitations.</p>
+                <div class="bg-zinc-900/50 p-6 rounded-2xl mt-8 border border-zinc-800">
+                    <h3 class="text-white text-xs font-bold uppercase mb-4 tracking-widest">📝 How to Use</h3>
+                    <ul class="space-y-2 text-xs">
+                        <li>• Create spectral 2D codes by distributing data into channels.</li>
+                        <li>• Test reading stability directly from the screen.</li>
+                        <li>• Note: Stable printing requires methods found in the AUTHOR section.</li>
+                    </ul>
+                </div>`,
+            author: `<h2 class="text-2xl font-bold text-white mb-6 uppercase italic">Mykhailo Kashkarov</h2>
+                <p>Science-art artist working at the intersection of light-sensitive painting, technology, and spectral design. His practice merges art and science: optics and material spectral properties.</p>
+                <p>At the core of his work is spectral response research: how different light ranges interact with pigments and surfaces.</p>
+                <div class="grid gap-4 mt-10">
+                    <p class="text-[10px] uppercase tracking-widest text-white mb-2">Publications:</p>
+                    <a href="https://zenodo.org/records/18895764" target="_blank" class="text-xs text-zinc-500 hover:text-white border-b border-zinc-900 pb-2 flex justify-between">Zenodo Research <span>→</span></a>
+                    <a href="https://astra31415926.github.io/" target="_blank" class="text-xs text-zinc-500 hover:text-white border-b border-zinc-900 pb-2 flex justify-between">Official Website <span>→</span></a>
+                </div>`
         }
     };
 
+    function utf8Encode(s) { return unescape(encodeURIComponent(s)); }
     function autoGrow(el) { el.style.height = "auto"; el.style.height = (el.scrollHeight) + "px"; }
     function showPage(id) { document.getElementById('menu').classList.add('hidden'); document.getElementById('page-' + id).classList.remove('hidden'); }
-    function openModal(type) { activeType = type; document.getElementById('modal-overlay').classList.remove('hidden'); setLang(currentLang); }
+    function openModal(t) { activeType = t; document.getElementById('modal-overlay').classList.remove('hidden'); setLang(currentLang); }
     function closeModal() { document.getElementById('modal-overlay').classList.add('hidden'); }
     function setLang(l) { 
         currentLang = l; 
-        document.getElementById('btn-ua').className = l === 'ua' ? 'text-white border-b' : 'text-zinc-700';
-        document.getElementById('btn-en').className = l === 'en' ? 'text-white border-b' : 'text-zinc-700';
+        document.getElementById('btn-ua').className = l === 'ua' ? 'text-white border-b' : 'text-zinc-600';
+        document.getElementById('btn-en').className = l === 'en' ? 'text-white border-b' : 'text-zinc-600';
         document.getElementById('modal-body').innerHTML = texts[l][activeType];
     }
 
@@ -169,10 +188,11 @@
         document.getElementById('menu').classList.remove('hidden');
         document.querySelectorAll('textarea').forEach(t => { t.value = ''; t.style.height = 'auto'; });
         document.getElementById('gen-result').classList.add('hidden');
-        document.getElementById('qr-canvas').classList.remove('qr-downloaded');
         document.getElementById('upload-preview').classList.add('hidden');
         document.getElementById('scan-controls').classList.remove('hidden');
         document.getElementById('scanner-box').classList.remove('scanning');
+        document.getElementById('scan-error').classList.add('hidden');
+        document.getElementById('qr-canvas').classList.remove('qr-faded');
         ['res-r','res-g','res-b'].forEach(id => document.getElementById(id).innerText = id.split('-')[1].toUpperCase() + ": ---");
     }
 
@@ -180,21 +200,21 @@
         const r = document.getElementById('in-r').value, g = document.getElementById('in-g').value, b = document.getElementById('in-b').value;
         if(!r && !g && !b) return document.getElementById('gen-result').classList.add('hidden');
         document.getElementById('gen-result').classList.remove('hidden');
-        document.getElementById('qr-canvas').classList.remove('qr-downloaded');
+        document.getElementById('qr-canvas').classList.remove('qr-faded');
         
-        const data = [r||' ', g||' ', b||' '];
+        const data = [r||' ', g||' ', b||' '].map(utf8Encode);
         let ver = 1;
         data.forEach(t => { try { const q=qrcode(0,'M'); q.addData(t); q.make(); ver=Math.max(ver, (q.getModuleCount()-17)/4); } catch(e){} });
         const qrs = data.map(t => { const q=qrcode(ver,'M'); q.addData(t); q.make(); return q; });
         
-        const canvas = document.getElementById('qr-canvas'), count = qrs[0].getModuleCount(), size = 10, margin = 2, total = (count + margin*2)*size;
+        const canvas = document.getElementById('qr-canvas'), count = qrs[0].getModuleCount(), size = 10, total = (count + 4)*size;
         canvas.width = canvas.height = total;
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#000'; ctx.fillRect(0,0,total,total);
         for(let y=0; y<count; y++) {
             for(let x=0; x<count; x++) {
                 const c = qrs.map(q => q.isDark(y,x)?255:0);
-                if(c.some(v=>v)) { ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`; ctx.fillRect((x+margin)*size, (y+margin)*size, size, size); }
+                if(c.some(v=>v)) { ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`; ctx.fillRect((x+2)*size, (y+2)*size, size, size); }
             }
         }
     }
@@ -202,7 +222,10 @@
     function downloadQR() {
         const a = document.createElement('a'); a.download = `rgb-qr-${Date.now()}.png`;
         a.href = document.getElementById('qr-canvas').toDataURL(); a.click();
-        shutter.play(); document.getElementById('qr-canvas').classList.add('qr-downloaded');
+        shutter.play(); 
+        document.getElementById('qr-canvas').classList.add('qr-faded');
+        // Показ кнопок інформації
+        setTimeout(() => openModal('tech'), 800);
     }
 
     async function startCamera() {
@@ -224,10 +247,20 @@
             const res = jsQR(b, c.width, c.height);
             if(res && res.data) {
                 const el = document.getElementById(ids[i]);
-                if(!el.innerText.includes(res.data)) { el.innerText = ids[i].split('-')[1].toUpperCase() + ": " + res.data; found = true; }
+                const decodedText = decodeURIComponent(escape(res.data));
+                if(!el.innerText.includes(decodedText)) { 
+                    el.innerText = ids[i].split('-')[1].toUpperCase() + ": " + decodedText; 
+                    el.classList.add('flash-active');
+                    setTimeout(() => el.classList.remove('flash-active'), 600);
+                    found = true; 
+                }
             }
         }
-        if(found) shutter.play();
+        if(found) { 
+            successSnd.play(); 
+            document.getElementById('upload-preview').classList.add('qr-faded');
+            document.getElementById('scan-error').classList.add('hidden');
+        }
     }
 
     document.getElementById('file-in').onchange = (e) => {
@@ -236,9 +269,17 @@
             const img = new Image();
             img.onload = () => {
                 document.getElementById('scan-controls').classList.add('hidden');
-                const p = document.getElementById('upload-preview'); p.src = img.src; p.classList.remove('hidden');
-                document.getElementById('scanner-box').classList.add('scanning');
-                setTimeout(() => { decode(img); document.getElementById('scanner-box').classList.remove('scanning'); }, 2000);
+                document.getElementById('scan-error').classList.add('hidden');
+                const p = document.getElementById('upload-preview'); p.src = img.src; p.classList.remove('hidden'); p.classList.remove('qr-faded');
+                const box = document.getElementById('scanner-box'); box.classList.add('scanning');
+                setTimeout(() => { 
+                    decode(img); 
+                    box.classList.remove('scanning');
+                    // Перевірка на помилку
+                    if(document.getElementById('res-r').innerText.includes('---')) {
+                        document.getElementById('scan-error').classList.remove('hidden');
+                    }
+                }, 2000);
             };
             img.src = ev.target.result;
         };
