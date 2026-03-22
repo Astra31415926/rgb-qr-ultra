@@ -3,155 +3,117 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>QRGB Ultra</title>
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>▣ QRGB Ultra</title>
+    
+    <meta name="description" content="Спектральні QR-коди RGB. Генерація та сканування.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='10' y='10' width='35' height='35' rx='5' fill='%23ff004d'/><rect x='55' y='10' width='35' height='35' rx='5' fill='%2300ff41'/><rect x='32' y='55' width='35' height='35' rx='5' fill='%230088ff'/></svg>">
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: { extend: { 
+                colors: { 
+                    base: '#000000', surface: '#0a0a0a', card: '#111111',
+                    accent: { red: '#ff004d', green: '#00ff41', blue: '#0088ff' }
+                },
+                fontFamily: { body: ['Inter', 'sans-serif'] }
+            }}
+        }
+    </script>
+
     <style>
-        :root { --r: #ff004d; --g: #00ff41; --b: #0088ff; --bg: #0a0a0a; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #e0e0e0; }
-        .font-display { font-family: 'Space Grotesk', sans-serif; }
-        .input-r { border-left: 3px solid var(--r); }
-        .input-g { border-left: 3px solid var(--g); }
-        .input-b { border-left: 3px solid var(--b); }
-        canvas { image-rendering: pixelated; }
-        .hidden { display: none; }
+        body { font-family: 'Inter', sans-serif; background: #000; color: #e0e0e0; }
+        canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
+        textarea { font-size: 16px; resize: none; min-height: 56px; }
+        
+        @keyframes scanLine { 0% { top: 0%; opacity: 1; } 100% { top: 100%; opacity: 0; } }
+        @keyframes glitch { 0%,100%{transform:translate(0);} 20%{transform:translate(-2px,2px);} 40%{transform:translate(2px,-2px);} 60%{transform:translate(-2px,-2px);} 80%{transform:translate(2px,2px);} }
+        @keyframes flash { 0%,100%{opacity:0;} 50%{opacity:0.7;} }
+        
+        .scan-line { position:absolute; left:0; right:0; height:3px; background:linear-gradient(90deg,transparent,#00ff41,transparent); box-shadow:0 0 20px #00ff41; animation:scanLine 2.5s linear forwards; }
+        .glitch-effect { animation:glitch .6s; }
+        .flash-effect { animation:flash .3s; }
+        .fade-in { animation:fadeIn .4s forwards; }
+        @keyframes fadeIn { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+        
+        .glow-red { box-shadow:0 0 12px rgba(255,0,77,.4); }
+        .glow-green { box-shadow:0 0 12px rgba(0,255,65,.4); }
+        .glow-blue { box-shadow:0 0 12px rgba(0,136,255,.4); }
+        
+        /* Mobile keyboard fix */
+        .input-focused { padding-top: 20vh; padding-bottom: 20vh; }
+        .qr-visible { max-height: 40vh; opacity: 1; }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
-    <header class="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10 p-4 flex items-center gap-4">
-        <canvas id="livePreviewCanvas" width="56" height="56" class="w-12 h-12 rounded-lg bg-zinc-900 border border-white/10"></canvas>
-        <h1 class="font-display font-bold text-xl tracking-tight">QRGB Ultra</h1>
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-b border-white/10 h-16 flex items-center justify-between px-4">
+        <div class="w-16 h-16 p-1 bg-gray-900 rounded-xl border border-white/20">
+            <canvas id="live-mini" class="w-full h-full rounded-lg"></canvas>
+        </div>
+        <h1 class="font-bold text-xl text-white">▣ QRGB Ultra</h1>
+        <button onclick="openModal('menu')" class="p-2 rounded-xl hover:bg-white/10">
+            <svg class="w-6 h-6 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
     </header>
 
-    <nav class="flex border-b border-white/10 bg-zinc-900/50">
-        <button id="tabGen" class="flex-1 py-3 text-sm font-bold border-b-2 border-red-500 text-red-500">GENERATE</button>
-        <button id="tabScan" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-zinc-500">SCAN</button>
-    </nav>
-
-    <main class="flex-1 p-4 overflow-y-auto">
-        <section id="genSection" class="space-y-6">
-            <div class="flex flex-col items-center">
-                <div class="p-3 bg-zinc-900 rounded-2xl border border-white/10 shadow-2xl">
-                    <canvas id="qrCanvas" width="240" height="240" class="rounded-lg"></canvas>
+    <!-- Main -->
+    <main class="flex-1 pt-20 pb-28 px-4 relative">
+        
+        <!-- Generation Tab -->
+        <section id="gen-tab" class="flex flex-col h-full">
+            <!-- Inputs -->
+            <div id="inputs-container" class="space-y-4 mb-6 transition-all duration-300">
+                <div class="relative">
+                    <textarea id="input-r" class="w-full bg-surface/50 border border-white/20 rounded-2xl p-4 pl-10 text-white placeholder-gray-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/30 w-full" placeholder="Red канал..."></textarea>
+                    <div class="absolute left-3 top-3 bottom-3 w-2 bg-gradient-to-b from-red-500 to-pink-500 rounded-full glow-red"></div>
                 </div>
-                <p class="text-[10px] text-zinc-500 mt-2 uppercase tracking-widest">Real-time RGB Encoding</p>
+                <div class="relative">
+                    <textarea id="input-g" class="w-full bg-surface/50 border border-white/20 rounded-2xl p-4 pl-10 text-white placeholder-gray-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/30 w-full" placeholder="Green канал..."></textarea>
+                    <div class="absolute left-3 top-3 bottom-3 w-2 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full glow-green"></div>
+                </div>
+                <div class="relative">
+                    <textarea id="input-b" class="w-full bg-surface/50 border border-white/20 rounded-2xl p-4 pl-10 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 w-full" placeholder="Blue канал..."></textarea>
+                    <div class="absolute left-3 top-3 bottom-3 w-2 bg-gradient-to-b from-blue-500 to-sky-500 rounded-full glow-blue"></div>
+                </div>
             </div>
 
-            <div class="space-y-4">
-                <div class="relative">
-                    <textarea id="inR" class="input-r w-full bg-zinc-900 border border-white/5 rounded-xl p-3 text-sm focus:outline-none" rows="2" placeholder="Red Channel Data..."></textarea>
-                    <span id="cR" class="absolute bottom-2 right-2 text-[10px] text-zinc-600">0/500</span>
-                </div>
-                <div class="relative">
-                    <textarea id="inG" class="input-g w-full bg-zinc-900 border border-white/5 rounded-xl p-3 text-sm focus:outline-none" rows="2" placeholder="Green Channel Data..."></textarea>
-                    <span id="cG" class="absolute bottom-2 right-2 text-[10px] text-zinc-600">0/500</span>
-                </div>
-                <div class="relative">
-                    <textarea id="inB" class="input-b w-full bg-zinc-900 border border-white/5 rounded-xl p-3 text-sm focus:outline-none" rows="2" placeholder="Blue Channel Data..."></textarea>
-                    <span id="cB" class="absolute bottom-2 right-2 text-[10px] text-zinc-600">0/500</span>
+            <!-- QR Preview -->
+            <div class="flex-1 flex flex-col items-center justify-center mb-6">
+                <div id="qr-container" class="relative w-full max-w-xs aspect-square bg-white rounded-3xl border-4 border-white/20 shadow-2xl p-4">
+                    <div id="qr-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500 text-sm font-medium">Введіть текст</div>
+                    <canvas id="qr-canvas" class="w-full h-full rounded-2xl opacity-0"></canvas>
                 </div>
             </div>
-            <button id="btnDl" class="w-full py-4 bg-white text-black font-bold rounded-xl active:scale-95 transition-transform">DOWNLOAD PNG</button>
+
+            <!-- Download -->
+            <button id="download-btn" onclick="downloadQR()" class="w-full py-4 bg-white text-black font-bold rounded-2xl text-sm uppercase tracking-wider shadow-2xl hover:shadow-white/50 active:scale-95 transition-all hidden">
+                Скачати PNG
+            </button>
         </section>
 
-        <section id="scanSection" class="hidden space-y-4">
-            <div id="scanMenu" class="flex flex-col gap-4">
-                <button id="btnCam" class="py-10 bg-zinc-900 border border-white/10 rounded-2xl flex flex-col items-center gap-2">
-                    <span class="text-3xl">📷</span>
-                    <span class="font-bold">USE CAMERA</span>
-                </button>
-                <button id="btnFile" class="py-10 bg-zinc-900 border border-white/10 rounded-2xl flex flex-col items-center gap-2">
-                    <span class="text-3xl">🖼️</span>
-                    <span class="font-bold">UPLOAD IMAGE</span>
-                </button>
-                <input type="file" id="fileIn" class="hidden" accept="image/*">
-            </div>
-
-            <div id="camView" class="hidden relative rounded-2xl overflow-hidden bg-black">
-                <video id="video" class="w-full h-auto" playsinline></video>
-                <button id="btnStop" class="absolute top-2 right-2 bg-red-500 p-2 rounded-lg text-xs font-bold">CLOSE</button>
-            </div>
-        </section>
-    </main>
-
-    <script>
-    (function() {
-        const size = 240;
-        let stream = null;
-
-        const el = {
-            inR: document.getElementById('inR'), inG: document.getElementById('inG'), inB: document.getElementById('inB'),
-            qr: document.getElementById('qrCanvas'), live: document.getElementById('livePreviewCanvas'),
-            genS: document.getElementById('genSection'), scanS: document.getElementById('scanSection'),
-            tG: document.getElementById('tabGen'), tS: document.getElementById('tabScan'),
-            v: document.getElementById('video'), fIn: document.getElementById('fileIn')
-        };
-
-        async function createLayer(text) {
-            const c = document.createElement('canvas');
-            await QRCode.toCanvas(c, text || " ", { width: size, margin: 1, errorCorrectionLevel: 'M' });
-            return c.getContext('2d').getImageData(0, 0, size, size).data;
-        }
-
-        async function updateQR() {
-            const ctx = el.qr.getContext('2d');
-            const [dR, dG, dB] = await Promise.all([createLayer(el.inR.value), createLayer(el.inG.value), createLayer(el.inB.value)]);
-            
-            const out = ctx.createImageData(size, size);
-            for (let i = 0; i < out.data.length; i += 4) {
-                out.data[i] = dR[i] < 128 ? 255 : 0;     // Red
-                out.data[i+1] = dG[i] < 128 ? 255 : 0;   // Green
-                out.data[i+2] = dB[i] < 128 ? 255 : 0;   // Blue
-                out.data[i+3] = 255;                     // Alpha
-            }
-            ctx.putImageData(out, 0, 0);
-            el.live.getContext('2d').drawImage(el.qr, 0, 0, 56, 56);
-        }
-
-        // Tab Logic
-        el.tG.onclick = () => { 
-            el.genS.classList.remove('hidden'); el.scanS.classList.add('hidden');
-            el.tG.classList.add('border-red-500', 'text-red-500'); el.tS.classList.replace('text-zinc-500', 'border-transparent');
-        };
-        el.tS.onclick = () => {
-            el.genS.classList.add('hidden'); el.scanS.classList.remove('hidden');
-            el.tS.classList.add('border-red-500', 'text-red-500'); el.tG.classList.replace('text-red-500', 'border-transparent');
-        };
-
-        // Camera Logic
-        document.getElementById('btnCam').onclick = async () => {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                el.v.srcObject = stream; el.v.play();
-                document.getElementById('camView').classList.remove('hidden');
-                document.getElementById('scanMenu').classList.add('hidden');
-            } catch (e) { alert("Камера недоступна (потрібен HTTPS)"); }
-        };
-
-        document.getElementById('btnStop').onclick = () => {
-            if(stream) stream.getTracks().forEach(t => t.stop());
-            document.getElementById('camView').classList.add('hidden');
-            document.getElementById('scanMenu').classList.remove('hidden');
-        };
-
-        // Inputs
-        [el.inR, el.inG, el.inB].forEach(i => i.oninput = () => {
-            document.getElementById('c' + i.id.slice(-1)).innerText = `${i.value.length}/500`;
-            updateQR();
-        });
-
-        // Download
-        document.getElementById('btnDl').onclick = () => {
-            const link = document.createElement('a');
-            link.download = `qrgb_${Date.now()}.png`;
-            link.href = el.qr.toDataURL();
-            link.click();
-        };
-
-        updateQR(); // Initial build
-    })();
-    </script>
-</body>
-</html>
+        <!-- Scanner Tab -->
+        <section id="scan-tab" class="tab-content hidden flex flex-col h-full">
+            <!-- Scanner viewport -->
+            <div class="relative w-full aspect-square max-h-[45vh] bg-surface rounded-3xl border-4 border-white/20 mb-6 mx-auto overflow-hidden">
+                <video id="video" class="absolute inset-0 object-cover hidden" playsinline></video>
+                <canvas id="scan-canvas" class="absolute inset-0 object-contain hidden"></canvas>
+                <div id="scan-overlay" class="absolute inset-4 border-4 border-green-500/30 rounded-2xl hidden pointer-events-none">
+                    <div id="scan-line" class="scan-line hidden"></div>
+                </div>
+                <div id="flash" class="absolute inset-0 bg-green-500 opacity-0 pointer-events-none"></div>
+                <div id="scan-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
+                    <button onclick="startCamera()" class="flex flex-col items-center gap-3 p-8 bg-black rounded-2xl hover:bg-white/5">
+                        <svg class="w-10 h-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-4.064 7-8.542 7-4.477 0-7.268-2.943-8.542-7z"/></svg>
+                        <span class="text-sm font-medium text-gray-300">Камера</span>
+                    </button>
+                    <button onclick="fileInput.click()" class="flex flex-col items-center gap-3 p-8 bg-black rounded-2xl hover:bg-white/5">
+                        <svg class="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m
