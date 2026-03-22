@@ -1,180 +1,157 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>QRGB Ultra - Скрытые каналы</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>QRGB Ultra</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
     <style>
-        body { background: #0a0a0a; color: #eee; font-family: sans-serif; }
-        .tab-active { border-bottom: 2px solid #0088ff; color: #0088ff; }
-        canvas { max-width: 100%; height: auto; border-radius: 8px; }
-        .channel-input { background: #111; border: 1px solid #333; padding: 10px; border-radius: 8px; width: 100%; margin-bottom: 10px; }
+        :root { --r: #ff004d; --g: #00ff41; --b: #0088ff; --bg: #0a0a0a; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: #e0e0e0; }
+        .font-display { font-family: 'Space Grotesk', sans-serif; }
+        .input-r { border-left: 3px solid var(--r); }
+        .input-g { border-left: 3px solid var(--g); }
+        .input-b { border-left: 3px solid var(--b); }
+        canvas { image-rendering: pixelated; }
+        .hidden { display: none; }
     </style>
 </head>
-<body class="p-4">
-
-    <header class="text-center mb-6">
-        <h1 class="text-2xl font-bold text-white">▣ QRGB Ultra</h1>
-        <p class="text-gray-500 text-sm">Скрытая стеганография R-G-B</p>
+<body class="min-h-screen flex flex-col">
+    <header class="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-white/10 p-4 flex items-center gap-4">
+        <canvas id="livePreviewCanvas" width="56" height="56" class="w-12 h-12 rounded-lg bg-zinc-900 border border-white/10"></canvas>
+        <h1 class="font-display font-bold text-xl tracking-tight">QRGB Ultra</h1>
     </header>
 
-    <nav class="flex mb-6 border-b border-gray-800">
-        <button id="tabGenBtn" class="flex-1 py-2 tab-active">Создать</button>
-        <button id="tabScanBtn" class="flex-1 py-2 text-gray-500">Сканировать</button>
+    <nav class="flex border-b border-white/10 bg-zinc-900/50">
+        <button id="tabGen" class="flex-1 py-3 text-sm font-bold border-b-2 border-red-500 text-red-500">GENERATE</button>
+        <button id="tabScan" class="flex-1 py-3 text-sm font-bold border-b-2 border-transparent text-zinc-500">SCAN</button>
     </nav>
 
-    <section id="genSection">
-        <div class="flex flex-col items-center">
-            <div class="bg-white p-2 rounded-lg mb-4">
-                <canvas id="mainCanvas" width="512" height="512" class="w-64 h-64"></canvas>
+    <main class="flex-1 p-4 overflow-y-auto">
+        <section id="genSection" class="space-y-6">
+            <div class="flex flex-col items-center">
+                <div class="p-3 bg-zinc-900 rounded-2xl border border-white/10 shadow-2xl">
+                    <canvas id="qrCanvas" width="240" height="240" class="rounded-lg"></canvas>
+                </div>
+                <p class="text-[10px] text-zinc-500 mt-2 uppercase tracking-widest">Real-time RGB Encoding</p>
             </div>
-            
-            <div class="w-full max-w-sm">
-                <label class="text-xs text-red-500 font-bold">RED CHANNEL (Декор)</label>
-                <input type="text" id="inputR" class="channel-input" placeholder="Текст для красного канала...">
-                
-                <label class="text-xs text-green-500 font-bold">GREEN CHANNEL (Декор)</label>
-                <input type="text" id="inputG" class="channel-input" placeholder="Текст для зеленого канала...">
-                
-                <label class="text-xs text-blue-400 font-bold">BLUE CHANNEL (Секретные данные)</label>
-                <input type="text" id="inputB" class="channel-input" placeholder="Этот QR будет скрыт...">
-                
-                <button id="downloadBtn" class="w-full bg-blue-600 py-3 rounded-xl font-bold mt-2">Скачать PNG</button>
+
+            <div class="space-y-4">
+                <div class="relative">
+                    <textarea id="inR" class="input-r w-full bg-zinc-900 border border-white/5 rounded-xl p-3 text-sm focus:outline-none" rows="2" placeholder="Red Channel Data..."></textarea>
+                    <span id="cR" class="absolute bottom-2 right-2 text-[10px] text-zinc-600">0/500</span>
+                </div>
+                <div class="relative">
+                    <textarea id="inG" class="input-g w-full bg-zinc-900 border border-white/5 rounded-xl p-3 text-sm focus:outline-none" rows="2" placeholder="Green Channel Data..."></textarea>
+                    <span id="cG" class="absolute bottom-2 right-2 text-[10px] text-zinc-600">0/500</span>
+                </div>
+                <div class="relative">
+                    <textarea id="inB" class="input-b w-full bg-zinc-900 border border-white/5 rounded-xl p-3 text-sm focus:outline-none" rows="2" placeholder="Blue Channel Data..."></textarea>
+                    <span id="cB" class="absolute bottom-2 right-2 text-[10px] text-zinc-600">0/500</span>
+                </div>
             </div>
-        </div>
-    </section>
+            <button id="btnDl" class="w-full py-4 bg-white text-black font-bold rounded-xl active:scale-95 transition-transform">DOWNLOAD PNG</button>
+        </section>
 
-    <section id="scanSection" class="hidden text-center">
-        <div class="space-y-4">
-            <button id="startCamBtn" class="w-full bg-green-600 py-4 rounded-xl font-bold">Включить камеру</button>
-            <input type="file" id="fileInput" accept="image/*" class="hidden">
-            <button onclick="document.getElementById('fileInput').click()" class="w-full bg-gray-800 py-4 rounded-xl border border-gray-600">Загрузить файл</button>
-        </div>
-        
-        <video id="video" class="hidden w-full mt-4 rounded-lg"></video>
-        <div id="result" class="mt-6 p-4 bg-gray-900 rounded-lg text-green-400 font-mono break-all hidden"></div>
-    </section>
+        <section id="scanSection" class="hidden space-y-4">
+            <div id="scanMenu" class="flex flex-col gap-4">
+                <button id="btnCam" class="py-10 bg-zinc-900 border border-white/10 rounded-2xl flex flex-col items-center gap-2">
+                    <span class="text-3xl">📷</span>
+                    <span class="font-bold">USE CAMERA</span>
+                </button>
+                <button id="btnFile" class="py-10 bg-zinc-900 border border-white/10 rounded-2xl flex flex-col items-center gap-2">
+                    <span class="text-3xl">🖼️</span>
+                    <span class="font-bold">UPLOAD IMAGE</span>
+                </button>
+                <input type="file" id="fileIn" class="hidden" accept="image/*">
+            </div>
 
-    <div id="qrHelper" class="hidden"></div>
+            <div id="camView" class="hidden relative rounded-2xl overflow-hidden bg-black">
+                <video id="video" class="w-full h-auto" playsinline></video>
+                <button id="btnStop" class="absolute top-2 right-2 bg-red-500 p-2 rounded-lg text-xs font-bold">CLOSE</button>
+            </div>
+        </section>
+    </main>
 
     <script>
-        const mainCanvas = document.getElementById('mainCanvas');
-        const ctx = mainCanvas.getContext('2d');
-        const inputs = ['inputR', 'inputG', 'inputB'];
-        
-        // --- ЛОГИКА ГЕНЕРАЦИИ (Живое обновление) ---
+    (function() {
+        const size = 240;
+        let stream = null;
+
+        const el = {
+            inR: document.getElementById('inR'), inG: document.getElementById('inG'), inB: document.getElementById('inB'),
+            qr: document.getElementById('qrCanvas'), live: document.getElementById('livePreviewCanvas'),
+            genS: document.getElementById('genSection'), scanS: document.getElementById('scanSection'),
+            tG: document.getElementById('tabGen'), tS: document.getElementById('tabScan'),
+            v: document.getElementById('video'), fIn: document.getElementById('fileIn')
+        };
+
+        async function createLayer(text) {
+            const c = document.createElement('canvas');
+            await QRCode.toCanvas(c, text || " ", { width: size, margin: 1, errorCorrectionLevel: 'M' });
+            return c.getContext('2d').getImageData(0, 0, size, size).data;
+        }
+
         async function updateQR() {
-            const size = 512;
-            const finalData = ctx.createImageData(size, size);
+            const ctx = el.qr.getContext('2d');
+            const [dR, dG, dB] = await Promise.all([createLayer(el.inR.value), createLayer(el.inG.value), createLayer(el.inB.value)]);
             
-            // Получаем данные QR для каждого канала
-            const layers = await Promise.all(inputs.map(id => {
-                return new Promise(resolve => {
-                    const text = document.getElementById(id).value || " ";
-                    const helper = document.getElementById('qrHelper');
-                    helper.innerHTML = '';
-                    new QRCode(helper, { text: text, width: size, height: size, correctLevel: QRCode.CorrectLevel.L });
-                    setTimeout(() => {
-                        const canvas = helper.querySelector('canvas');
-                        resolve(canvas.getContext('2d').getImageData(0,0,size,size).data);
-                    }, 50);
-                });
-            }));
-
-            for (let i = 0; i < finalData.data.length; i += 4) {
-                // Красный канал (R) берет данные из первого инпута
-                finalData.data[i]     = layers[0][i] < 128 ? 0 : 255; 
-                // Зеленый канал (G) из второго
-                finalData.data[i + 1] = layers[1][i] < 128 ? 0 : 255;
-                // Синий канал (B) из третьего (наш секретный)
-                finalData.data[i + 2] = layers[2][i] < 128 ? 0 : 255;
-                finalData.data[i + 3] = 255; // Непрозрачность
+            const out = ctx.createImageData(size, size);
+            for (let i = 0; i < out.data.length; i += 4) {
+                out.data[i] = dR[i] < 128 ? 255 : 0;     // Red
+                out.data[i+1] = dG[i] < 128 ? 255 : 0;   // Green
+                out.data[i+2] = dB[i] < 128 ? 255 : 0;   // Blue
+                out.data[i+3] = 255;                     // Alpha
             }
-            ctx.putImageData(finalData, 0, 0);
+            ctx.putImageData(out, 0, 0);
+            el.live.getContext('2d').drawImage(el.qr, 0, 0, 56, 56);
         }
 
-        inputs.forEach(id => document.getElementById(id).addEventListener('input', updateQR));
-
-        // --- ЛОГИКА СКАНЕРА (Разделение на каналы) ---
-        async function scanImage(imageSource) {
-            const canvas = document.createElement('canvas');
-            const sCtx = canvas.getContext('2d');
-            canvas.width = imageSource.width || imageSource.videoWidth;
-            canvas.height = imageSource.height || imageSource.videoHeight;
-            sCtx.drawImage(imageSource, 0, 0);
-            
-            const rawData = sCtx.getImageData(0,0,canvas.width, canvas.height);
-            const resDiv = document.getElementById('result');
-
-            // Проверяем по очереди: Синий, Зеленый, Красный
-            for (let channelIdx = 2; channelIdx >= 0; channelIdx--) {
-                const monoBuffer = new Uint8ClampedArray(rawData.data.length);
-                for (let i = 0; i < rawData.data.length; i += 4) {
-                    const val = rawData.data[i + channelIdx];
-                    const bw = val < 128 ? 0 : 255;
-                    monoBuffer[i] = monoBuffer[i+1] = monoBuffer[i+2] = bw;
-                    monoBuffer[i+3] = 255;
-                }
-                const code = jsQR(monoBuffer, canvas.width, canvas.height);
-                if (code) {
-                    resDiv.classList.remove('hidden');
-                    resDiv.innerText = "Найдено в канале " + (channelIdx === 2 ? "BLUE" : channelIdx === 1 ? "GREEN" : "RED") + ": " + code.data;
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        // Обработка файла
-        document.getElementById('fileInput').onchange = e => {
-            const img = new Image();
-            img.onload = () => scanImage(img);
-            img.src = URL.createObjectURL(e.target.files[0]);
+        // Tab Logic
+        el.tG.onclick = () => { 
+            el.genS.classList.remove('hidden'); el.scanS.classList.add('hidden');
+            el.tG.classList.add('border-red-500', 'text-red-500'); el.tS.classList.replace('text-zinc-500', 'border-transparent');
+        };
+        el.tS.onclick = () => {
+            el.genS.classList.add('hidden'); el.scanS.classList.remove('hidden');
+            el.tS.classList.add('border-red-500', 'text-red-500'); el.tG.classList.replace('text-red-500', 'border-transparent');
         };
 
-        // Включение камеры
-        document.getElementById('startCamBtn').onclick = async () => {
-            const video = document.getElementById('video');
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-            video.srcObject = stream;
-            video.classList.remove('hidden');
-            video.play();
-            
-            const loop = () => {
-                if (video.paused || video.ended) return;
-                scanImage(video);
-                requestAnimationFrame(loop);
-            };
-            requestAnimationFrame(loop);
+        // Camera Logic
+        document.getElementById('btnCam').onclick = async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                el.v.srcObject = stream; el.v.play();
+                document.getElementById('camView').classList.remove('hidden');
+                document.getElementById('scanMenu').classList.add('hidden');
+            } catch (e) { alert("Камера недоступна (потрібен HTTPS)"); }
         };
 
-        // Переключение табов
-        document.getElementById('tabGenBtn').onclick = () => {
-            document.getElementById('genSection').classList.remove('hidden');
-            document.getElementById('scanSection').classList.add('hidden');
-            document.getElementById('tabGenBtn').classList.add('tab-active');
-            document.getElementById('tabScanBtn').classList.remove('tab-active');
+        document.getElementById('btnStop').onclick = () => {
+            if(stream) stream.getTracks().forEach(t => t.stop());
+            document.getElementById('camView').classList.add('hidden');
+            document.getElementById('scanMenu').classList.remove('hidden');
         };
-        document.getElementById('tabScanBtn').onclick = () => {
-            document.getElementById('scanSection').classList.remove('hidden');
-            document.getElementById('genSection').classList.add('hidden');
-            document.getElementById('tabScanBtn').classList.add('tab-active');
-            document.getElementById('tabGenBtn').classList.remove('tab-active');
-        };
-        
-        // Скачивание
-        document.getElementById('downloadBtn').onclick = () => {
+
+        // Inputs
+        [el.inR, el.inG, el.inB].forEach(i => i.oninput = () => {
+            document.getElementById('c' + i.id.slice(-1)).innerText = `${i.value.length}/500`;
+            updateQR();
+        });
+
+        // Download
+        document.getElementById('btnDl').onclick = () => {
             const link = document.createElement('a');
-            link.download = 'qrgb_art.png';
-            link.href = mainCanvas.toDataURL();
+            link.download = `qrgb_${Date.now()}.png`;
+            link.href = el.qr.toDataURL();
             link.click();
         };
 
-        // Стартовая инициализация
-        updateQR();
+        updateQR(); // Initial build
+    })();
     </script>
 </body>
 </html>
