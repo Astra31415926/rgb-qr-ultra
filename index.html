@@ -3,117 +3,781 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#000000">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <title>▣ QRGB Ultra</title>
-    
-    <meta name="description" content="Спектральні QR-коди RGB. Генерація та сканування.">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='10' y='10' width='35' height='35' rx='5' fill='%23ff004d'/><rect x='55' y='10' width='35' height='35' rx='5' fill='%2300ff41'/><rect x='32' y='55' width='35' height='35' rx='5' fill='%230088ff'/></svg>">
-
+    <title>▣ QRGB ULTRA - Pro Engine v5.0 (RAW Mode)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <script>
-        tailwind.config = {
-            theme: { extend: { 
-                colors: { 
-                    base: '#000000', surface: '#0a0a0a', card: '#111111',
-                    accent: { red: '#ff004d', green: '#00ff41', blue: '#0088ff' }
-                },
-                fontFamily: { body: ['Inter', 'sans-serif'] }
-            }}
-        }
-    </script>
-
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: #000; color: #e0e0e0; }
-        canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
-        textarea { font-size: 16px; resize: none; min-height: 56px; }
+        body { background: #000; color: #fff; font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; }
+        canvas { image-rendering: pixelated; }
+        textarea { background: #0a0a0a; border: 1px solid #333; color: #fff; font-family: monospace; }
         
-        @keyframes scanLine { 0% { top: 0%; opacity: 1; } 100% { top: 100%; opacity: 0; } }
-        @keyframes glitch { 0%,100%{transform:translate(0);} 20%{transform:translate(-2px,2px);} 40%{transform:translate(2px,-2px);} 60%{transform:translate(-2px,-2px);} 80%{transform:translate(2px,2px);} }
-        @keyframes flash { 0%,100%{opacity:0;} 50%{opacity:0.7;} }
+        /* Логотип */
+        .logo-q { color: #fff; text-shadow: 0 0 10px rgba(255,255,255,0.6); }
+        .logo-r { color: #FF004D; text-shadow: 0 0 10px #FF004D; }
+        .logo-g { color: #00FF41; text-shadow: 0 0 10px #00FF41; }
+        .logo-b { color: #0088FF; text-shadow: 0 0 10px #0088FF; }
+
+        /* Анимация сканирования */
+        .scan-line { 
+            position:absolute; left:0; right:0; height:3px; 
+            background:linear-gradient(90deg,transparent,#00ff41,transparent); 
+            box-shadow:0 0 20px #00ff41; 
+            top: 0; 
+            z-index: 10;
+            display: none;
+        }
+        .scan-active .scan-line {
+            display: block;
+            animation: scanLine 2.5s linear forwards;
+        }
+        @keyframes scanLine { 
+            0%{top:0%;} 
+            100%{top:100%;} 
+        }
         
-        .scan-line { position:absolute; left:0; right:0; height:3px; background:linear-gradient(90deg,transparent,#00ff41,transparent); box-shadow:0 0 20px #00ff41; animation:scanLine 2.5s linear forwards; }
-        .glitch-effect { animation:glitch .6s; }
-        .flash-effect { animation:flash .3s; }
-        .fade-in { animation:fadeIn .4s forwards; }
-        @keyframes fadeIn { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+        @keyframes flash { 0%,100%{opacity:0} 50%{opacity:.9} }
+        .flash { animation:flash .3s; }
         
-        .glow-red { box-shadow:0 0 12px rgba(255,0,77,.4); }
-        .glow-green { box-shadow:0 0 12px rgba(0,255,65,.4); }
-        .glow-blue { box-shadow:0 0 12px rgba(0,136,255,.4); }
+        .indicator { width: 12px; height: 12px; border-radius: 50%; background: #222; border: 1px solid rgba(255,255,255,0.1); transition: all 0.3s; }
+        .active-r { background: #ff004d; box-shadow: 0 0 10px #ff004d; }
+        .active-g { background: #00ff41; box-shadow: 0 0 10px #00ff41; }
+        .active-b { background: #0088ff; box-shadow: 0 0 10px #0088ff; }
         
-        /* Mobile keyboard fix */
-        .input-focused { padding-top: 20vh; padding-bottom: 20vh; }
-        .qr-visible { max-height: 40vh; opacity: 1; }
+        /* Видео и Картинки */
+        #video { object-fit: cover; }
+        
+        /* Меню и Модалки */
+        .dropdown-menu {
+            transform: translateY(-10px);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+        .dropdown-menu.show {
+            transform: translateY(0);
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-overlay {
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .modal-content {
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.show .modal-content {
+            transform: scale(1);
+        }
+
+        /* Переключатель языков */
+        .lang-switch {
+            display: flex;
+            gap: 2px;
+            background: #1a1a1a;
+            padding: 2px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+        .lang-btn {
+            padding: 4px 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            opacity: 0.5;
+            transition: all 0.2s;
+        }
+        .lang-btn.active {
+            opacity: 1;
+            background: #333;
+            color: #fff;
+        }
+        
+        /* Стили для ссылок в модалке */
+        .modal-content a { color: #60a5fa; text-decoration: underline; }
+        .modal-content a:hover { color: #93c5fd; }
+
+        /* Pro Controls Styles */
+        .control-group {
+            background: #111;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        .slider-container input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            outline: none;
+        }
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+        
+        /* Metadata Badge */
+        .meta-badge {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.8);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 9px;
+            font-family: monospace;
+            color: #00ff41;
+            border: 1px solid #00ff4133;
+            z-index: 20;
+            pointer-events: none;
+        }
     </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="flex flex-col min-h-screen p-6">
 
     <!-- Header -->
-    <header class="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-b border-white/10 h-16 flex items-center justify-between px-4">
-        <div class="w-16 h-16 p-1 bg-gray-900 rounded-xl border border-white/20">
-            <canvas id="live-mini" class="w-full h-full rounded-lg"></canvas>
-        </div>
-        <h1 class="font-bold text-xl text-white">▣ QRGB Ultra</h1>
-        <button onclick="openModal('menu')" class="p-2 rounded-xl hover:bg-white/10">
-            <svg class="w-6 h-6 text-white/70" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-        </button>
-    </header>
-
-    <!-- Main -->
-    <main class="flex-1 pt-20 pb-28 px-4 relative">
+    <div class="flex items-center justify-between mb-6 relative">
+        <canvas id="mini-qr" width="44" height="44" class="rounded bg-zinc-900 border border-white/10"></canvas>
         
-        <!-- Generation Tab -->
-        <section id="gen-tab" class="flex flex-col h-full">
-            <!-- Inputs -->
-            <div id="inputs-container" class="space-y-4 mb-6 transition-all duration-300">
-                <div class="relative">
-                    <textarea id="input-r" class="w-full bg-surface/50 border border-white/20 rounded-2xl p-4 pl-10 text-white placeholder-gray-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/30 w-full" placeholder="Red канал..."></textarea>
-                    <div class="absolute left-3 top-3 bottom-3 w-2 bg-gradient-to-b from-red-500 to-pink-500 rounded-full glow-red"></div>
+        <!-- Логотип QRGB -->
+        <h1 class="text-xl font-extrabold tracking-widest uppercase text-center flex-1 flex justify-center gap-0.5">
+            <span class="logo-q">Q</span><span class="logo-r">R</span><span class="logo-g">G</span><span class="logo-b">B</span>
+        </h1>
+        
+        <!-- Language Switcher & Menu -->
+        <div class="flex items-center gap-3 z-50">
+            <div class="lang-switch">
+                <div id="lang-uk" class="lang-btn active" onclick="setLanguage('uk')">UK</div>
+                <div id="lang-en" class="lang-btn" onclick="setLanguage('en')">EN</div>
+            </div>
+            <button id="menu-btn" class="w-10 text-white text-xl active:scale-90 transition-transform">☰</button>
+        </div>
+        
+        <!-- Выпадающее меню (UPDATED) -->
+        <div id="dropdown" class="dropdown-menu absolute top-full right-0 mt-2 w-64 bg-zinc-900 rounded-xl border border-white/10 shadow-2xl z-50 overflow-hidden">
+            <!-- Pro Controls Section -->
+            <div class="p-3 border-b border-white/10 bg-black/40">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest" data-i18n="menu_pro">Pro Settings</span>
+                    <div id="pro-status" class="w-2 h-2 rounded-full bg-red-500"></div>
                 </div>
-                <div class="relative">
-                    <textarea id="input-g" class="w-full bg-surface/50 border border-white/20 rounded-2xl p-4 pl-10 text-white placeholder-gray-500 focus:border-green-500 focus:ring-2 focus:ring-green-500/30 w-full" placeholder="Green канал..."></textarea>
-                    <div class="absolute left-3 top-3 bottom-3 w-2 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full glow-green"></div>
+                
+                <!-- ISO Control -->
+                <div class="control-group">
+                    <div class="flex justify-between text-[10px] mb-1">
+                        <span class="text-zinc-400">ISO</span>
+                        <span id="iso-val" class="text-white font-bold">AUTO</span>
+                    </div>
+                    <input type="range" id="ctrl-iso" min="0" max="3200" step="100" value="0" onchange="applyManualSettings()">
                 </div>
-                <div class="relative">
-                    <textarea id="input-b" class="w-full bg-surface/50 border border-white/20 rounded-2xl p-4 pl-10 text-white placeholder-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/30 w-full" placeholder="Blue канал..."></textarea>
-                    <div class="absolute left-3 top-3 bottom-3 w-2 bg-gradient-to-b from-blue-500 to-sky-500 rounded-full glow-blue"></div>
+                
+                <!-- Exposure Control -->
+                <div class="control-group">
+                    <div class="flex justify-between text-[10px] mb-1">
+                        <span class="text-zinc-400">EXPOSURE</span>
+                        <span id="exp-val" class="text-white font-bold">AUTO</span>
+                    </div>
+                    <input type="range" id="ctrl-exp" min="0" max="100" value="50" onchange="applyManualSettings()">
+                </div>
+                
+                <!-- WB Control -->
+                <div class="control-group">
+                    <div class="flex justify-between text-[10px] mb-1">
+                        <span class="text-zinc-400">WHITE BALANCE</span>
+                        <span id="wb-val" class="text-white font-bold">AUTO</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1 mt-1">
+                        <button onclick="setWB('auto')" class="text-[8px] py-1 bg-zinc-800 rounded active:bg-zinc-600">AUTO</button>
+                        <button onclick="setWB('sunny')" class="text-[8px] py-1 bg-zinc-800 rounded active:bg-zinc-600">SUN</button>
+                        <button onclick="setWB('cloudy')" class="text-[8px] py-1 bg-zinc-800 rounded active:bg-zinc-600">CLOUD</button>
+                    </div>
                 </div>
             </div>
+            
+            <!-- Standard Menu Items -->
+            <a href="#" onclick="openModal('usage')" class="block px-4 py-3 text-xs text-zinc-300 hover:bg-zinc-800 border-b border-white/5" data-i18n="menu_usage">Як користуватися</a>
+            <a href="#" onclick="openModal('tech')" class="block px-4 py-3 text-xs text-zinc-300 hover:bg-zinc-800 border-b border-white/5" data-i18n="menu_tech">Технологія</a>
+            <a href="#" onclick="openModal('author')" class="block px-4 py-3 text-xs text-zinc-300 hover:bg-zinc-800 border-b border-white/5" data-i18n="menu_author">Автор і контакти</a>
+            <button onclick="globalReset()" class="w-full text-left px-4 py-3 text-xs text-red-400 hover:bg-zinc-800 font-bold uppercase tracking-wide" data-i18n="menu_reset">Reset / Очистити всё</button>
+        </div>
+    </div>
 
-            <!-- QR Preview -->
-            <div class="flex-1 flex flex-col items-center justify-center mb-6">
-                <div id="qr-container" class="relative w-full max-w-xs aspect-square bg-white rounded-3xl border-4 border-white/20 shadow-2xl p-4">
-                    <div id="qr-placeholder" class="absolute inset-0 flex items-center justify-center text-gray-500 text-sm font-medium">Введіть текст</div>
-                    <canvas id="qr-canvas" class="w-full h-full rounded-2xl opacity-0"></canvas>
-                </div>
+    <!-- Inputs -->
+    <div class="space-y-3 mb-6">
+        <textarea id="r-text" class="w-full p-4 rounded-xl border-l-4 border-red-600 outline-none h-14 text-sm" placeholder="RED CHANNEL..."></textarea>
+        <textarea id="g-text" class="w-full p-4 rounded-xl border-l-4 border-green-600 outline-none h-14 text-sm" placeholder="GREEN CHANNEL..."></textarea>
+        <textarea id="b-text" class="w-full p-4 rounded-xl border-l-4 border-blue-600 outline-none h-14 text-sm" placeholder="BLUE (PRIORITY)..."></textarea>
+    </div>
+
+    <!-- Central Frame (Unified Display) -->
+    <div class="flex-1 flex flex-col items-center justify-center mb-6">
+        <div id="central-container" class="relative w-72 h-72 bg-zinc-950 rounded-[2rem] p-5 border border-white/5 shadow-2xl overflow-hidden">
+            <!-- Layers: QR, Video, Image -->
+            <canvas id="qr-main" width="512" height="512" class="w-full h-full transition-opacity duration-500"></canvas>
+            <video id="video" class="absolute inset-0 w-full h-full object-cover hidden" playsinline></video>
+            <canvas id="freeze-frame" class="absolute inset-0 w-full h-full object-cover hidden z-10"></canvas>
+            
+            <!-- Overlays -->
+            <div class="scan-line"></div>
+            <div id="flash-layer" class="absolute inset-0 bg-white opacity-0 pointer-events-none z-50"></div>
+            
+            <!-- Metadata Badge -->
+            <div id="meta-badge" class="meta-badge hidden">
+                <div>ISO: <span id="m-iso">--</span></div>
+                <div>EXP: <span id="m-exp">--</span>ms</div>
+                <div>WB: <span id="m-wb">--</span></div>
             </div>
+        </div>
 
-            <!-- Download -->
-            <button id="download-btn" onclick="downloadQR()" class="w-full py-4 bg-white text-black font-bold rounded-2xl text-sm uppercase tracking-wider shadow-2xl hover:shadow-white/50 active:scale-95 transition-all hidden">
-                Скачати PNG
-            </button>
-        </section>
+        <!-- Result Indicators -->
+        <div id="result-indicators" class="w-72 mt-4 space-y-2 opacity-0 transition-opacity duration-300">
+            <div id="res-r" class="p-3 bg-zinc-900/60 rounded-xl flex items-center gap-3 border border-white/5">
+                <div class="indicator"></div>
+                <span class="text-[10px] text-zinc-500 uppercase tracking-tighter">R: Waiting...</span>
+            </div>
+            <div id="res-g" class="p-3 bg-zinc-900/60 rounded-xl flex items-center gap-3 border border-white/5">
+                <div class="indicator"></div>
+                <span class="text-[10px] text-zinc-500 uppercase tracking-tighter">G: Waiting...</span>
+            </div>
+            <div id="res-b" class="p-3 bg-zinc-900/60 rounded-xl flex items-center gap-3 border border-blue-500/20">
+                <div class="indicator"></div>
+                <span class="text-[10px] text-zinc-400 uppercase tracking-tighter">B: Priority Ready</span>
+            </div>
+        </div>
+    </div>
 
-        <!-- Scanner Tab -->
-        <section id="scan-tab" class="tab-content hidden flex flex-col h-full">
-            <!-- Scanner viewport -->
-            <div class="relative w-full aspect-square max-h-[45vh] bg-surface rounded-3xl border-4 border-white/20 mb-6 mx-auto overflow-hidden">
-                <video id="video" class="absolute inset-0 object-cover hidden" playsinline></video>
-                <canvas id="scan-canvas" class="absolute inset-0 object-contain hidden"></canvas>
-                <div id="scan-overlay" class="absolute inset-4 border-4 border-green-500/30 rounded-2xl hidden pointer-events-none">
-                    <div id="scan-line" class="scan-line hidden"></div>
-                </div>
-                <div id="flash" class="absolute inset-0 bg-green-500 opacity-0 pointer-events-none"></div>
-                <div id="scan-placeholder" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
-                    <button onclick="startCamera()" class="flex flex-col items-center gap-3 p-8 bg-black rounded-2xl hover:bg-white/5">
-                        <svg class="w-10 h-10 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-4.064 7-8.542 7-4.477 0-7.268-2.943-8.542-7z"/></svg>
-                        <span class="text-sm font-medium text-gray-300">Камера</span>
-                    </button>
-                    <button onclick="fileInput.click()" class="flex flex-col items-center gap-3 p-8 bg-black rounded-2xl hover:bg-white/5">
-                        <svg class="w-10 h-10 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 4v1m6 11h2m
+    <!-- Actions -->
+    <div class="space-y-3 pb-4">
+        <button id="save-btn" onclick="saveQR()" class="w-full py-4 bg-white text-black font-black rounded-2xl hidden active:scale-95 text-xs tracking-widest uppercase" data-i18n="btn_save">Save Result</button>
+        <div class="grid grid-cols-2 gap-3">
+            <button onclick="startCamera()" class="py-4 bg-zinc-900 text-white font-bold rounded-2xl border border-white/10 active:scale-95 text-[10px] uppercase tracking-widest" data-i18n="btn_camera">Open Camera</button>
+            <input type="file" id="file-input" accept="image/*" class="hidden" onchange="handleFile(event)">
+            <button onclick="triggerFileInput()" class="py-4 bg-zinc-900 text-white font-bold rounded-2xl border border-white/10 active:scale-95 text-[10px] uppercase tracking-widest" data-i18n="btn_gallery">Open Gallery</button>
+        </div>
+    </div>
+
+    <!-- Modal Window -->
+    <div id="modal-overlay" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl">
+        <div class="modal-content w-full max-w-md bg-zinc-900/80 border border-white/10 rounded-3xl p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-zinc-500 hover:text-white text-xs font-bold border border-white/10 px-3 py-1 rounded-lg" data-i18n="btn_close">CLOSE</button>
+            <h2 id="modal-title" class="text-lg font-bold mb-4 pr-10"></h2>
+            <div id="modal-body" class="text-sm text-zinc-300 space-y-4 leading-relaxed"></div>
+        </div>
+    </div>
+
+    <script>
+        // --- LOCALIZATION ENGINE ---
+        const translations = {
+            uk: {
+                menu_usage: "Як користуватися",
+                menu_tech: "Технологія",
+                menu_author: "Автор і контакти",
+                menu_reset: "Reset / Очистити всё",
+                menu_pro: "PRO НАЛАШТУВАННЯ",
+                btn_save: "Зберегти PNG",
+                btn_camera: "Камера",
+                btn_gallery: "Галерея",
+                scan_title: "Спектральний Аналіз",
+                btn_close: "ЗАКРИТИ",
+                ph_r: "Текст для Red...",
+                ph_g: "Текст для Green...",
+                ph_b: "Текст для Blue...",
+                res_wait: "Очікування...",
+                res_fail: "[!] Не вдалося зчитати",
+                m_usage_title: "📝 Як користуватися",
+                m_usage_body: `<p>Створювати кольорові (спектральні) 2D-коди. Тестувати їх зчитування з екрана або зображення.</p>`,
+                m_tech_title: "⚙️ Технологія",
+                m_tech_body: `<p>Кольорові 2D-коди розширюють класичний QR-код. У цій версії додано ручне керування параметрами сенсора (ISO/Exposure) для досягнення максимальної точності каналу при скануванні.</p>`,
+                m_author_title: "🎨 Автор",
+                m_author_body: `<p><strong>Михайло Кашкаров</strong></p><p>📩 bakminsterfuler@gmail.com</p>`
+            },
+            en: {
+                menu_usage: "How to use",
+                menu_tech: "Technology",
+                menu_author: "Author & Contacts",
+                menu_reset: "Reset / Clear All",
+                menu_pro: "PRO SETTINGS",
+                btn_save: "Save PNG",
+                btn_camera: "Camera",
+                btn_gallery: "Gallery",
+                scan_title: "Spectral Analysis",
+                btn_close: "CLOSE",
+                ph_r: "Text for Red...",
+                ph_g: "Text for Green...",
+                ph_b: "Text for Blue...",
+                res_wait: "Waiting...",
+                res_fail: "[!] Failed to decode",
+                m_usage_title: "📝 How to use",
+                m_usage_body: `<p>Create spectral RGB 2D codes. Test decoding with manual sensor controls.</p>`,
+                m_tech_title: "⚙️ Technology",
+                m_tech_body: `<p>Manual sensor controls allow bypassing auto-exposure limits to optimize channel separation.</p>`,
+                m_author_title: "🎨 Author",
+                m_author_body: `<p><strong>Mykhailo Kashkarov</strong></p><p>📩 bakminsterfuler@gmail.com</p>`
+            }
+        };
+
+        let currentLang = 'uk';
+        function setLanguage(lang) {
+            currentLang = lang;
+            document.getElementById('lang-uk').classList.toggle('active', lang === 'uk');
+            document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) el.textContent = translations[lang][key];
+            });
+            els.r.placeholder = translations[lang].ph_r;
+            els.g.placeholder = translations[lang].ph_g;
+            els.b.placeholder = translations[lang].ph_b;
+            document.documentElement.lang = lang;
+        }
+
+        // --- MODAL LOGIC ---
+        function openModal(type) {
+            const prefix = 'm_' + type;
+            document.getElementById('modal-title').textContent = translations[currentLang][prefix + '_title'];
+            document.getElementById('modal-body').innerHTML = translations[currentLang][prefix + '_body'];
+            document.getElementById('modal-overlay').classList.add('show');
+            document.getElementById('dropdown').classList.remove('show');
+        }
+        function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); }
+        document.getElementById('modal-overlay').addEventListener('click', (e) => {
+            if (e.target.id === 'modal-overlay') closeModal();
+        });
+
+        // --- AUDIO ENGINE ---
+        const AudioEngine = {
+            ctx: null, initialized: false,
+            init() {
+                if(this.initialized) return;
+                try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); this.initialized = true; } 
+                catch(e) { console.error("Web Audio API not supported"); }
+            },
+            playScan() {
+                if(!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(200, now);
+                osc.frequency.exponentialRampToValueAtTime(1200, now + 2.5);
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.05, now + 0.5);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(now); osc.stop(now + 2.6);
+            },
+            playResult(success) {
+                if(!this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = success ? 'sine' : 'sawtooth';
+                osc.frequency.setValueAtTime(success ? 2500 : 150, now);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+                osc.connect(gain); gain.connect(this.ctx.destination);
+                osc.start(now); osc.stop(now + 0.3);
+            }
+        };
+        document.body.addEventListener('click', () => AudioEngine.init(), { once: true });
+
+        // --- ELEMENTS & STATE ---
+        const els = {
+            r: document.getElementById('r-text'), g: document.getElementById('g-text'), b: document.getElementById('b-text'),
+            main: document.getElementById('qr-main'), mini: document.getElementById('mini-qr'),
+            video: document.getElementById('video'), freeze: document.getElementById('freeze-frame'),
+            centralContainer: document.getElementById('central-container'), flash: document.getElementById('flash-layer'),
+            resultIndicators: document.getElementById('result-indicators'),
+            resR: document.getElementById('res-r'), resG: document.getElementById('res-g'), resB: document.getElementById('res-b'),
+            metaBadge: document.getElementById('meta-badge'), proStatus: document.getElementById('pro-status')
+        };
+
+        let scanning = false;
+        let results = {r:null, g:null, b:null};
+        let analysisReady = false;
+        let videoTrack = null; // Для керування камерою
+        let capabilities = {}; // Можливості камери
+
+        // --- MENU LOGIC ---
+        document.getElementById('menu-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('dropdown').classList.toggle('show');
+        });
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#dropdown') && !e.target.closest('#menu-btn') && !e.target.closest('.lang-switch')) {
+                document.getElementById('dropdown').classList.remove('show');
+            }
+        });
+
+        function globalReset() {
+            stopCamera();
+            els.r.value = ""; els.g.value = ""; els.b.value = "";
+            generateQR();
+            els.resultIndicators.style.opacity = 0;
+            els.main.classList.remove('hidden');
+            els.freeze.classList.add('hidden');
+            els.video.classList.add('hidden');
+            els.metaBadge.classList.add('hidden');
+            document.getElementById('dropdown').classList.remove('show');
+        }
+
+        // --- QR Generation ---
+        function generateQR() {
+            const texts = [els.r.value, els.g.value, els.b.value];
+            if (!texts.some(t => t.trim())) {
+                els.main.style.opacity = 0;
+                document.getElementById('save-btn').classList.add('hidden');
+                return;
+            }
+            els.main.style.opacity = 1;
+            els.freeze.classList.add('hidden');
+            els.video.classList.add('hidden');
+            
+            let maxVer = 1;
+            texts.forEach(t => {
+                if(!t.trim()) return;
+                const tmp = qrcode(0, 'M'); tmp.addData(unescape(encodeURIComponent(t || " "))); tmp.make();
+                const v = Math.floor((tmp.getModuleCount() - 17) / 4);
+                if (v > maxVer) maxVer = v;
+            });
+            
+            const ctx = els.main.getContext('2d');
+            ctx.fillStyle = "#000"; ctx.fillRect(0,0,512,512);
+            ctx.globalCompositeOperation = "lighten";
+            
+            texts.forEach((text, i) => {
+                if(!text.trim()) return;
+                const qr = qrcode(maxVer, 'M'); qr.addData(unescape(encodeURIComponent(text))); qr.make();
+                const mod = 512 / qr.getModuleCount();
+                ctx.fillStyle = i === 0 ? "#FF0000" : (i === 1 ? "#00FF00" : "#0000FF");
+                for (let r = 0; r < qr.getModuleCount(); r++) {
+                    for (let c = 0; c < qr.getModuleCount(); c++) {
+                        if (qr.isDark(r, c)) ctx.fillRect(c * mod, r * mod, mod, mod);
+                    }
+                }
+            });
+            ctx.globalCompositeOperation = "source-over";
+            els.main.style.opacity = 1;
+            document.getElementById('save-btn').classList.remove('hidden');
+            els.mini.getContext('2d').drawImage(els.main, 0, 0, 44, 44);
+        }
+        [els.r, els.g, els.b].forEach(el => el.addEventListener('input', generateQR));
+
+        // --- CAMERA2 (WEB API) LOGIC ---
+        
+        async function startCamera() {
+            els.r.value = ""; els.g.value = ""; els.b.value = ""; 
+            prepareScannerUI();
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: "environment",
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 }
+                    } 
+                });
+                
+                els.video.srcObject = stream;
+                videoTrack = stream.getVideoTracks()[0];
+                
+                // Отримуємо можливості камери (Capabilities)
+                capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
+                console.log("Camera Capabilities:", capabilities);
+                
+                // Оновлюємо UI слайдерів
+                setupControlsUI();
+                
+                els.video.play();
+                scanning = true;
+                requestAnimationFrame(scanFrame);
+                
+            } catch(e) { 
+                alert("Camera Error: " + e.message); 
+                stopCamera(); 
+            }
+        }
+
+        function setupControlsUI() {
+            const isoInput = document.getElementById('ctrl-iso');
+            const expInput = document.getElementById('ctrl-exp');
+            
+            // ISO Setup
+            if (capabilities.iso && capabilities.iso.min !== capabilities.iso.max) {
+                isoInput.min = capabilities.iso.min;
+                isoInput.max = capabilities.iso.max;
+                isoInput.step = capabilities.iso.step || 1;
+                isoInput.disabled = false;
+            } else {
+                isoInput.disabled = true;
+            }
+            
+            // Exposure Setup
+            if (capabilities.exposureMode && capabilities.exposureMode.includes('manual')) {
+                expInput.disabled = false;
+            } else {
+                expInput.disabled = true;
+            }
+        }
+
+        // Застосування ручних налаштувань
+        async function applyManualSettings() {
+            if (!videoTrack) return;
+            
+            const isoVal = document.getElementById('ctrl-iso').value;
+            const expVal = document.getElementById('ctrl-exp').value;
+            
+            // Відображення значень
+            document.getElementById('iso-val').innerText = isoVal > 0 ? isoVal : 'AUTO';
+            document.getElementById('exp-val').innerText = expVal > 0 ? 'MANUAL' : 'AUTO';
+            
+            try {
+                // Вимикаємо автоналаштування, якщо підтримується
+                if (capabilities.exposureMode && capabilities.exposureMode.includes('manual')) {
+                    await videoTrack.applyConstraints({
+                        advanced: [{ exposureMode: 'manual' }]
+                    });
+                }
+                
+                // Встановлюємо ISO
+                if (capabilities.iso && isoVal > 0) {
+                    await videoTrack.applyConstraints({
+                        advanced: [{ iso: parseInt(isoVal) }]
+                    });
+                }
+                
+                // Встановлюємо Exposure (уємо значення частково, бо API залежить від пристрою)
+                // Примітка: exposureTime вимірюється в мікросекундах, тут спрощено
+                if (capabilities.exposureTime && expVal > 0) {
+                    const expTime = Math.max(capabilities.exposureTime.min, Math.min(capabilities.exposureTime.max, expVal * 100));
+                    await videoTrack.applyConstraints({
+                        advanced: [{ exposureTime: expTime }]
+                    });
+                }
+                
+                els.proStatus.classList.remove('bg-red-500');
+                els.proStatus.classList.add('bg-green-500');
+                
+                // Оновлення метаданих на екрані
+                updateMetaData();
+                
+            } catch (e) {
+                console.warn("Manual settings failed:", e);
+                els.proStatus.classList.remove('bg-green-500');
+                els.proStatus.classList.add('bg-yellow-500');
+            }
+        }
+        
+        async function setWB(mode) {
+            if (!videoTrack || !capabilities.whiteBalanceMode) return;
+            
+            const modes = { 'auto': 'continuous', 'sunny': 'manual', 'cloudy': 'manual' }; // Спрощено
+            const temp = mode === 'sunny' ? 5500 : 6500; // Кельвіни (орієнтир)
+            
+            document.getElementById('wb-val').innerText = mode.toUpperCase();
+            
+            try {
+                if (capabilities.whiteBalanceMode.includes(modes[mode])) {
+                     await videoTrack.applyConstraints({ advanced: [{ whiteBalanceMode: modes[mode] }] });
+                }
+            } catch(e) { console.warn("WB Error", e); }
+        }
+
+        function updateMetaData() {
+            if (!videoTrack) return;
+            const settings = videoTrack.getSettings ? videoTrack.getSettings() : {};
+            
+            document.getElementById('m-iso').innerText = settings.iso || '--';
+            document.getElementById('m-exp').innerText = settings.exposureTime ? Math.round(settings.exposureTime/1000) : '--';
+            document.getElementById('m-wb').innerText = settings.whiteBalanceMode || '--';
+            
+            els.metaBadge.classList.remove('hidden');
+            
+            // JSON Logging
+            console.log("FRAME METADATA JSON:", JSON.stringify(settings, null, 2));
+        }
+
+        function stopCamera() {
+            scanning = false;
+            els.metaBadge.classList.add('hidden');
+            if (els.video.srcObject) els.video.srcObject.getTracks().forEach(t => t.stop());
+            videoTrack = null;
+            els.proStatus.classList.remove('bg-green-500');
+            els.proStatus.classList.add('bg-red-500');
+        }
+
+        function prepareScannerUI() {
+            results = {r:null, g:null, b:null}; analysisReady = false;
+            els.main.style.opacity = 0; els.freeze.classList.add('hidden'); els.video.classList.remove('hidden');
+            els.resultIndicators.style.opacity = 1;
+            ['r', 'g', 'b'].forEach(ch => {
+                const el = els['res' + ch.toUpperCase()];
+                el.querySelector('span').textContent = ch.toUpperCase() + ': ' + translations[currentLang].res_wait;
+                el.querySelector('.indicator').className = 'indicator';
+                el.classList.remove('hidden'); el.style.opacity = 0.5;
+            });
+        }
+
+        function scanFrame() {
+            if (!scanning) return;
+            if (els.video.readyState === els.video.HAVE_ENOUGH_DATA) {
+                const cv = document.createElement('canvas');
+                cv.width = 480; cv.height = 480;
+                const cx = cv.getContext('2d');
+                const vw = els.video.videoWidth, vh = els.video.videoHeight;
+                const aspect = vw / vh;
+                let sx = 0, sy = 0, sw = vw, sh = vh;
+                if (aspect > 1) { sw = vh; sx = (vw - sw) / 2; } else { sh = vw; sy = (vh - sh) / 2; }
+                cx.drawImage(els.video, sx, sy, sw, sh, 0, 0, 480, 480);
+                
+                // Оновлюємо метадані в реальному часі (опціонально, може навантажувати CPU)
+                // updateMetaData(); 
+                
+                if(!analysisReady) processImageData(cx.getImageData(0,0,480,480), 480, 480, false);
+            }
+            requestAnimationFrame(scanFrame);
+        }
+
+        function processImageData(img, w, h, isFileScan) {
+            let foundAny = false;
+            [0, 1, 2].forEach(idx => {
+                const ch = ['r', 'g', 'b'][idx];
+                if (results[ch]) return;
+                const mono = new Uint8ClampedArray(img.data.length);
+                for (let i = 0; i < img.data.length; i += 4) {
+                    const v = img.data[i + idx];
+                    // Використовуємо жорсткий поріг для RAW-подібного аналізу
+                    const b = v < 128 ? 0 : 255; 
+                    mono[i] = mono[i+1] = mono[i+2] = b;
+                    mono[i+3] = 255;
+                }
+                const code = jsQR(mono, w, h, { inversionAttempts: "attemptBoth" });
+                if (code) { results[ch] = code.data; foundAny = true; }
+            });
+
+            if(foundAny && (results.b || (results.r && results.g && results.b))) {
+                analysisReady = true;
+                if(!isFileScan) triggerCaptureSequence();
+            }
+            return foundAny;
+        }
+
+        function triggerCaptureSequence() {
+            stopCamera();
+            
+            // Збереження метаданих останнього кадра перед зупинкою
+            const finalMeta = videoTrack ? videoTrack.getSettings() : {};
+            const metaLog = { timestamp: Date.now(), settings: finalMeta };
+            console.log("SCAN RESULT METADATA:", JSON.stringify(metaLog));
+            
+            els.freeze.width = 480; els.freeze.height = 480;
+            const fctx = els.freeze.getContext('2d');
+            const vw = els.video.videoWidth, vh = els.video.videoHeight;
+            const aspect = vw / vh;
+            let sx = 0, sy = 0, sw = vw, sh = vh;
+            if (aspect > 1) { sw = vh; sx = (vw - sw) / 2; } else { sh = vw; sy = (vh - sh) / 2; }
+            fctx.drawImage(els.video, sx, sy, sw, sh, 0, 0, 480, 480);
+            
+            els.video.classList.add('hidden');
+            els.freeze.classList.remove('hidden');
+            
+            startVisualizationSequence(true);
+        }
+
+        function startVisualizationSequence(success) {
+            els.centralContainer.classList.add('scan-active');
+            if(success) AudioEngine.playScan();
+            setTimeout(() => {
+                els.flash.classList.add('flash');
+                AudioEngine.playResult(success);
+                setTimeout(() => els.flash.classList.remove('flash'), 300);
+                if(success) updateResultUI(); else handleFailUI();
+            }, 2500);
+        }
+
+        function updateResultUI() {
+            ['r', 'g', 'b'].forEach(ch => {
+                const el = els['res' + ch.toUpperCase()];
+                const data = results[ch];
+                if(data) {
+                    el.querySelector('span').textContent = data;
+                    el.querySelector('.indicator').className = 'indicator active-'+ch;
+                    el.classList.remove('hidden'); el.style.opacity = 1;
+                    els[ch].value = data;
+                } else { el.classList.add('hidden'); }
+            });
+        }
+
+        function handleFailUI() {
+            ['r', 'g', 'b'].forEach(ch => {
+                const el = els['res' + ch.toUpperCase()];
+                el.classList.remove('hidden'); el.style.opacity = 1;
+                el.querySelector('span').textContent = translations[currentLang].res_fail;
+                el.querySelector('.indicator').className = 'indicator';
+            });
+        }
+
+        // --- File Handler (Unchanged logic, kept for context) ---
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    prepareScannerUI(); 
+                    els.freeze.width = 480; els.freeze.height = 480;
+                    const fctx = els.freeze.getContext('2d');
+                    fctx.fillStyle = "#000"; fctx.fillRect(0, 0, 480, 480);
+                    const aspect = img.width / img.height;
+                    let sx = 0, sy = 0, sw = img.width, sh = img.height;
+                    if (aspect > 1) { sw = img.height; sx = (img.width - sw) / 2; } else { sh = img.width; sy = (img.height - sh) / 2; }
+                    fctx.drawImage(img, sx, sy, sw, sh, 0, 0, 480, 480);
+                    els.freeze.classList.remove('hidden'); els.video.classList.add('hidden');
+                    const scanSize = 1024;
+                    const scv = document.createElement('canvas'); scv.width = scanSize; scv.height = scanSize;
+                    const sctx = scv.getContext('2d');
+                    let ssx=0, ssy=0, ssw=img.width, ssh=img.height;
+                    const sAspect = img.width / img.height;
+                    if (sAspect > 1) { ssw = img.height; ssx = (img.width - ssw) / 2; } else { ssh = img.width; ssy = (img.height - ssh) / 2; }
+                    sctx.drawImage(img, ssx, ssy, ssw, ssh, 0, 0, scanSize, scanSize);
+                    processImageData(sctx.getImageData(0,0,scanSize,scanSize), scanSize, scanSize, true);
+                    startVisualizationSequence(analysisReady);
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+        
+        function triggerFileInput() {
+            els.r.value = ""; els.g.value = ""; els.b.value = ""; 
+            document.getElementById('file-input').click();
+        }
+
+        function saveQR() {
+            const a = document.createElement('a');
+            a.download = 'QRGB_RAW_CAPTURE.json'; 
+            // Тут можна зберігати метадані разом із зображенням, але для прикладу зберігаємо PNG
+            a.href = els.main.toDataURL(); 
+            a.click();
+        }
+    </script>
+</body>
+</html>
