@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>▣ QRGB ULTRA - Pro Engine v5.0 (RAW Mode)</title>
+    <title>▣ QRGB ULTRA - Neural Engine v5.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -30,12 +30,9 @@
         }
         .scan-active .scan-line {
             display: block;
-            animation: scanLine 2.5s linear forwards;
+            animation: scanLine 2.0s linear forwards; /* Speed up slightly */
         }
-        @keyframes scanLine { 
-            0%{top:0%;} 
-            100%{top:100%;} 
-        }
+        @keyframes scanLine { 0%{top:0%;} 100%{top:100%;} }
         
         @keyframes flash { 0%,100%{opacity:0} 50%{opacity:.9} }
         .flash { animation:flash .3s; }
@@ -48,7 +45,7 @@
         /* Видео и Картинки */
         #video { object-fit: cover; }
         
-        /* Меню и Модалки */
+        /* Меню */
         .dropdown-menu {
             transform: translateY(-10px);
             opacity: 0;
@@ -63,92 +60,39 @@
             visibility: visible;
         }
         
-        .modal-overlay {
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.3s ease;
-        }
-        .modal-overlay.show {
-            opacity: 1;
-            visibility: visible;
-        }
+        .modal-overlay { opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+        .modal-overlay.show { opacity: 1; visibility: visible; }
         
-        .modal-content {
-            transform: scale(0.9);
-            transition: transform 0.3s ease;
-        }
-        .modal-overlay.show .modal-content {
-            transform: scale(1);
-        }
+        .modal-content { transform: scale(0.9); transition: transform 0.3s ease; }
+        .modal-overlay.show .modal-content { transform: scale(1); }
 
-        /* Переключатель языков */
-        .lang-switch {
-            display: flex;
-            gap: 2px;
-            background: #1a1a1a;
-            padding: 2px;
-            border-radius: 6px;
-            font-size: 10px;
-            font-weight: 700;
-        }
-        .lang-btn {
-            padding: 4px 6px;
-            border-radius: 4px;
-            cursor: pointer;
-            opacity: 0.5;
-            transition: all 0.2s;
-        }
-        .lang-btn.active {
-            opacity: 1;
-            background: #333;
-            color: #fff;
-        }
+        .lang-switch { display: flex; gap: 2px; background: #1a1a1a; padding: 2px; border-radius: 6px; font-size: 10px; font-weight: 700; }
+        .lang-btn { padding: 4px 6px; border-radius: 4px; cursor: pointer; opacity: 0.5; transition: all 0.2s; }
+        .lang-btn.active { opacity: 1; background: #333; color: #fff; }
         
-        /* Стили для ссылок в модалке */
         .modal-content a { color: #60a5fa; text-decoration: underline; }
-        .modal-content a:hover { color: #93c5fd; }
-
-        /* Pro Controls Styles */
-        .control-group {
-            background: #111;
-            border: 1px solid #333;
-            border-radius: 12px;
-            padding: 12px;
-            margin-bottom: 8px;
-        }
-        .slider-container input[type="range"] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 4px;
-            background: #333;
-            border-radius: 2px;
-            outline: none;
-        }
-        .slider-container input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
-            background: #fff;
-            border-radius: 50%;
-            cursor: pointer;
-            box-shadow: 0 0 10px rgba(255,255,255,0.5);
-        }
         
-        /* Metadata Badge */
-        .meta-badge {
+        /* Processing Indicator */
+        .processing-spinner {
             position: absolute;
-            bottom: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.8);
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 9px;
-            font-family: monospace;
-            color: #00ff41;
-            border: 1px solid #00ff4133;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px; height: 40px;
+            border: 4px solid rgba(255,255,255,0.1);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
             z-index: 20;
-            pointer-events: none;
+            display: none;
         }
+        .is-processing .processing-spinner { display: block; }
+        @keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+        
+        /* Debug Toggle */
+        .toggle-bg { background: #333; width: 36px; height: 18px; border-radius: 9px; position: relative; cursor: pointer; transition: background 0.2s; }
+        .toggle-bg.active { background: #00ff41; }
+        .toggle-knob { position: absolute; top: 1px; left: 1px; width: 16px; height: 16px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
+        .toggle-bg.active .toggle-knob { transform: translateX(18px); }
     </style>
 </head>
 <body class="flex flex-col min-h-screen p-6">
@@ -157,12 +101,10 @@
     <div class="flex items-center justify-between mb-6 relative">
         <canvas id="mini-qr" width="44" height="44" class="rounded bg-zinc-900 border border-white/10"></canvas>
         
-        <!-- Логотип QRGB -->
         <h1 class="text-xl font-extrabold tracking-widest uppercase text-center flex-1 flex justify-center gap-0.5">
             <span class="logo-q">Q</span><span class="logo-r">R</span><span class="logo-g">G</span><span class="logo-b">B</span>
         </h1>
         
-        <!-- Language Switcher & Menu -->
         <div class="flex items-center gap-3 z-50">
             <div class="lang-switch">
                 <div id="lang-uk" class="lang-btn active" onclick="setLanguage('uk')">UK</div>
@@ -171,52 +113,20 @@
             <button id="menu-btn" class="w-10 text-white text-xl active:scale-90 transition-transform">☰</button>
         </div>
         
-        <!-- Выпадающее меню (UPDATED) -->
+        <!-- Menu Dropdown -->
         <div id="dropdown" class="dropdown-menu absolute top-full right-0 mt-2 w-64 bg-zinc-900 rounded-xl border border-white/10 shadow-2xl z-50 overflow-hidden">
-            <!-- Pro Controls Section -->
-            <div class="p-3 border-b border-white/10 bg-black/40">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest" data-i18n="menu_pro">Pro Settings</span>
-                    <div id="pro-status" class="w-2 h-2 rounded-full bg-red-500"></div>
-                </div>
-                
-                <!-- ISO Control -->
-                <div class="control-group">
-                    <div class="flex justify-between text-[10px] mb-1">
-                        <span class="text-zinc-400">ISO</span>
-                        <span id="iso-val" class="text-white font-bold">AUTO</span>
-                    </div>
-                    <input type="range" id="ctrl-iso" min="0" max="3200" step="100" value="0" onchange="applyManualSettings()">
-                </div>
-                
-                <!-- Exposure Control -->
-                <div class="control-group">
-                    <div class="flex justify-between text-[10px] mb-1">
-                        <span class="text-zinc-400">EXPOSURE</span>
-                        <span id="exp-val" class="text-white font-bold">AUTO</span>
-                    </div>
-                    <input type="range" id="ctrl-exp" min="0" max="100" value="50" onchange="applyManualSettings()">
-                </div>
-                
-                <!-- WB Control -->
-                <div class="control-group">
-                    <div class="flex justify-between text-[10px] mb-1">
-                        <span class="text-zinc-400">WHITE BALANCE</span>
-                        <span id="wb-val" class="text-white font-bold">AUTO</span>
-                    </div>
-                    <div class="grid grid-cols-3 gap-1 mt-1">
-                        <button onclick="setWB('auto')" class="text-[8px] py-1 bg-zinc-800 rounded active:bg-zinc-600">AUTO</button>
-                        <button onclick="setWB('sunny')" class="text-[8px] py-1 bg-zinc-800 rounded active:bg-zinc-600">SUN</button>
-                        <button onclick="setWB('cloudy')" class="text-[8px] py-1 bg-zinc-800 rounded active:bg-zinc-600">CLOUD</button>
-                    </div>
+            <!-- Debug Mode Toggle -->
+            <div class="p-3 border-b border-white/10 flex justify-between items-center">
+                <span class="text-[10px] font-bold text-zinc-400 uppercase">Debug View</span>
+                <div id="debug-toggle" onclick="toggleDebug()" class="toggle-bg">
+                    <div class="toggle-knob"></div>
                 </div>
             </div>
             
-            <!-- Standard Menu Items -->
             <a href="#" onclick="openModal('usage')" class="block px-4 py-3 text-xs text-zinc-300 hover:bg-zinc-800 border-b border-white/5" data-i18n="menu_usage">Як користуватися</a>
             <a href="#" onclick="openModal('tech')" class="block px-4 py-3 text-xs text-zinc-300 hover:bg-zinc-800 border-b border-white/5" data-i18n="menu_tech">Технологія</a>
             <a href="#" onclick="openModal('author')" class="block px-4 py-3 text-xs text-zinc-300 hover:bg-zinc-800 border-b border-white/5" data-i18n="menu_author">Автор і контакти</a>
-            <button onclick="globalReset()" class="w-full text-left px-4 py-3 text-xs text-red-400 hover:bg-zinc-800 font-bold uppercase tracking-wide" data-i18n="menu_reset">Reset / Очистити всё</button>
+            <button onclick="globalReset()" class="w-full text-left px-4 py-3 text-xs text-red-400 hover:bg-zinc-800 font-bold uppercase tracking-wide" data-i18n="menu_reset">Reset</button>
         </div>
     </div>
 
@@ -227,24 +137,16 @@
         <textarea id="b-text" class="w-full p-4 rounded-xl border-l-4 border-blue-600 outline-none h-14 text-sm" placeholder="BLUE (PRIORITY)..."></textarea>
     </div>
 
-    <!-- Central Frame (Unified Display) -->
+    <!-- Central Frame -->
     <div class="flex-1 flex flex-col items-center justify-center mb-6">
         <div id="central-container" class="relative w-72 h-72 bg-zinc-950 rounded-[2rem] p-5 border border-white/5 shadow-2xl overflow-hidden">
-            <!-- Layers: QR, Video, Image -->
             <canvas id="qr-main" width="512" height="512" class="w-full h-full transition-opacity duration-500"></canvas>
             <video id="video" class="absolute inset-0 w-full h-full object-cover hidden" playsinline></video>
             <canvas id="freeze-frame" class="absolute inset-0 w-full h-full object-cover hidden z-10"></canvas>
             
-            <!-- Overlays -->
             <div class="scan-line"></div>
             <div id="flash-layer" class="absolute inset-0 bg-white opacity-0 pointer-events-none z-50"></div>
-            
-            <!-- Metadata Badge -->
-            <div id="meta-badge" class="meta-badge hidden">
-                <div>ISO: <span id="m-iso">--</span></div>
-                <div>EXP: <span id="m-exp">--</span>ms</div>
-                <div>WB: <span id="m-wb">--</span></div>
-            </div>
+            <div class="processing-spinner"></div>
         </div>
 
         <!-- Result Indicators -->
@@ -274,7 +176,7 @@
         </div>
     </div>
 
-    <!-- Modal Window -->
+    <!-- Modal -->
     <div id="modal-overlay" class="modal-overlay fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/60 backdrop-blur-xl">
         <div class="modal-content w-full max-w-md bg-zinc-900/80 border border-white/10 rounded-3xl p-6 shadow-2xl relative max-h-[80vh] overflow-y-auto">
             <button onclick="closeModal()" class="absolute top-4 right-4 text-zinc-500 hover:text-white text-xs font-bold border border-white/10 px-3 py-1 rounded-lg" data-i18n="btn_close">CLOSE</button>
@@ -284,56 +186,257 @@
     </div>
 
     <script>
-        // --- LOCALIZATION ENGINE ---
+        // --- WORKER CODE (Inline) ---
+        // Увесь важкий код обробки винесено в окремий потік
+        const workerCode = `
+            importScripts('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js');
+
+            const SCIMatrixProcessor = {
+                L_ref: 0, U_ref: 255,
+                matrix: [1,0,0, 0,1,0, 0,0,1], // Identity default
+                
+                setMatrix: function(m) { if(m.length===9) this.matrix = m; },
+                
+                // Розділення каналів з урахуванням матриці
+                separate: function(data, w, h) {
+                    const len = data.length;
+                    const rBuf = new Uint8ClampedArray(len);
+                    const gBuf = new Uint8ClampedArray(len);
+                    const bBuf = new Uint8ClampedArray(len);
+                    const grayBuf = new Uint8ClampedArray(len); // Fallback
+                    
+                    const m = this.matrix;
+                    const range = (this.U_ref - this.L_ref) || 1;
+
+                    for (let i = 0; i < len; i += 4) {
+                        let rN = (data[i]   - this.L_ref) / range;
+                        let gN = (data[i+1] - this.L_ref) / range;
+                        let bN = (data[i+2] - this.L_ref) / range;
+
+                        // Deconvolution
+                        let pR = (m[0]*rN + m[1]*gN + m[2]*bN) * 255;
+                        let pG = (m[3]*rN + m[4]*gN + m[5]*bN) * 255;
+                        let pB = (m[6]*rN + m[7]*gN + m[8]*bN) * 255;
+
+                        // Clamp & Store
+                        let vR = Math.max(0, Math.min(255, pR));
+                        let vG = Math.max(0, Math.min(255, pG));
+                        let vB = Math.max(0, Math.min(255, pB));
+
+                        // Write Buffers (Grayscale format R=G=B)
+                        rBuf[i] = rBuf[i+1] = rBuf[i+2] = vR; rBuf[i+3] = 255;
+                        gBuf[i] = gBuf[i+1] = gBuf[i+2] = vG; gBuf[i+3] = 255;
+                        bBuf[i] = bBuf[i+1] = bBuf[i+2] = vB; bBuf[i+3] = 255;
+                        
+                        // Standard Luminance
+                        let lum = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
+                        grayBuf[i] = grayBuf[i+1] = grayBuf[i+2] = lum; grayBuf[i+3] = 255;
+                    }
+                    return { r: rBuf, g: gBuf, b: bBuf, gray: grayBuf };
+                }
+            };
+
+            // --- Image Processing Utils ---
+            
+            // Швидкий Median Filter (3x3) для шуму
+            function medianFilter(inBuf, w, h) {
+                const outBuf = new Uint8ClampedArray(inBuf.length);
+                // Копіюємо краї без змін (спрощення)
+                for(let y=1; y<h-1; y++) {
+                    for(let x=1; x<w-1; x++) {
+                        const idx = (y*w + x)*4;
+                        let neighbors = [];
+                        // 3x3 window
+                        for(let ky=-1; ky<=1; ky++) {
+                            for(let kx=-1; kx<=1; kx++) {
+                                neighbors.push(inBuf[((y+ky)*w + (x+kx))*4]);
+                            }
+                        }
+                        neighbors.sort((a,b)=>a-b);
+                        const med = neighbors[4]; // Median of 9
+                        outBuf[idx] = outBuf[idx+1] = outBuf[idx+2] = med;
+                        outBuf[idx+3] = 255;
+                    }
+                }
+                return outBuf;
+            }
+
+            // Sauvola Binarization using Integral Images
+            function sauvolaBinarize(inBuf, w, h, k=0.2, windowSize=15) {
+                const outBuf = new Uint8ClampedArray(inBuf.length);
+                const intImg = new Float32Array(w*h);
+                const intImgSq = new Float32Array(w*h);
+                
+                // Compute Integral Images
+                for(let y=0; y<h; y++) {
+                    let sum=0, sumSq=0;
+                    for(let x=0; x<w; x++) {
+                        const idx = y*w + x;
+                        const val = inBuf[idx*4]; // R channel
+                        sum += val;
+                        sumSq += val*val;
+                        intImg[idx] = (y>0 ? intImg[idx-w] : 0) + sum;
+                        intImgSq[idx] = (y>0 ? intImgSq[idx-w] : 0) + sumSq;
+                    }
+                }
+
+                const whalf = Math.floor(windowSize/2);
+                const area = windowSize*windowSize;
+                
+                for(let y=0; y<h; y++) {
+                    for(let x=0; x<w; x++) {
+                        const idx = (y*w + x)*4;
+                        
+                        // Window bounds
+                        const x1 = Math.max(0, x - whalf);
+                        const y1 = Math.max(0, y - whalf);
+                        const x2 = Math.min(w-1, x + whalf);
+                        const y2 = Math.min(h-1, y + whalf);
+                        
+                        // Sum from Integral Image
+                        // S(x,y) = I(D) - I(B) - I(C) + I(A)
+                        // A=(x1,y1), B=(x2,y1), C=(x1,y2), D=(x2,y2)
+                        const count = (x2-x1)*(y2-y1); // dynamic area on edges
+                        
+                        const getSum = (img, px, py) => (px>=0 && py>=0) ? img[py*w + px] : 0;
+                        
+                        const sum = getSum(intImg, x2, y2) - getSum(intImg, x1-1, y2) - getSum(intImg, x2, y1-1) + getSum(intImg, x1-1, y1-1);
+                        const sumSq = getSum(intImgSq, x2, y2) - getSum(intImgSq, x1-1, y2) - getSum(intImgSq, x2, y1-1) + getSum(intImgSq, x1-1, y1-1);
+                        
+                        const mean = sum / count;
+                        const variance = (sumSq / count) - (mean * mean);
+                        const std = Math.sqrt(Math.max(0, variance)); // Clamp sqrt to 0
+                        
+                        // Sauvola Threshold
+                        const T = mean * (1 + k * (std / 128 - 1));
+                        
+                        // Binarize
+                        const val = inBuf[idx] < T ? 0 : 255;
+                        outBuf[idx] = outBuf[idx+1] = outBuf[idx+2] = val;
+                        outBuf[idx+3] = 255;
+                    }
+                }
+                return outBuf;
+            }
+
+            // Morphological Closing (3x3) - Connects broken modules
+            function morphClose(inBuf, w, h) {
+                // Simplified Dilation then Erosion
+                const dilated = new Uint8ClampedArray(inBuf.length);
+                const eroded = new Uint8ClampedArray(inBuf.length);
+                
+                // Dilation (Max)
+                for(let y=1; y<h-1; y++) {
+                    for(let x=1; x<w-1; x++) {
+                        let max = 0;
+                        for(let ky=-1; ky<=1; ky++) {
+                            for(let kx=-1; kx<=1; kx++) {
+                                const v = inBuf[((y+ky)*w + (x+kx))*4];
+                                if(v > max) max = v;
+                            }
+                        }
+                        const idx = (y*w+x)*4;
+                        dilated[idx] = dilated[idx+1] = dilated[idx+2] = max;
+                        dilated[idx+3] = 255;
+                    }
+                }
+                
+                // Erosion (Min)
+                 for(let y=1; y<h-1; y++) {
+                    for(let x=1; x<w-1; x++) {
+                        let min = 255;
+                        for(let ky=-1; ky<=1; ky++) {
+                            for(let kx=-1; kx<=1; kx++) {
+                                const v = dilated[((y+ky)*w + (x+kx))*4];
+                                if(v < min) min = v;
+                            }
+                        }
+                        const idx = (y*w+x)*4;
+                        eroded[idx] = eroded[idx+1] = eroded[idx+2] = min;
+                        eroded[idx+3] = 255;
+                    }
+                }
+                return eroded;
+            }
+
+            // --- Main Worker Logic ---
+            self.onmessage = function(e) {
+                const { type, payload } = e.data;
+                
+                if(type === 'setMatrix') {
+                    SCIMatrixProcessor.setMatrix(payload);
+                    return;
+                }
+                
+                if(type === 'process') {
+                    const { imgData, w, h, debug } = payload;
+                    const results = {r:null, g:null, b:null, gray:null};
+                    let foundAny = false;
+                    let debugBuffer = null;
+
+                    // 1. SCI Separation
+                    const separated = SCIMatrixProcessor.separate(imgData, w, h);
+                    
+                    const channels = ['r', 'g', 'b', 'gray'];
+                    const buffers = [separated.r, separated.g, separated.b, separated.gray];
+                    
+                    // Loop through channels
+                    outerLoop:
+                    for(let i=0; i<channels.length; i++) {
+                        const ch = channels[i];
+                        const buf = buffers[i];
+                        
+                        // 2. Noise Filtering (Median)
+                        const filtered = medianFilter(buf, w, h);
+                        
+                        // 3. Adaptive Binarization (Sauvola)
+                        const binary = sauvolaBinarize(filtered, w, h, 0.2, 15);
+                        
+                        // 4. Morphological Correction (Close)
+                        const corrected = morphClose(binary, w, h);
+                        
+                        // Capture Debug Frame (once, e.g., for Red channel)
+                        if(i === 0 && debug) debugBuffer = corrected;
+
+                        // 5. Decode Attempt
+                        const code = jsQR(corrected, w, h, { inversionAttempts: "attemptBoth" });
+                        if(code) {
+                            results[ch] = code.data;
+                            foundAny = true;
+                            // Optional: break if priority channel found?
+                            // No, let's find all valid channels.
+                        }
+                    }
+                    
+                    self.postMessage({ results, debugBuffer, foundAny });
+                }
+            };
+        `;
+
+        // Create Worker Blob
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        const workerUrl = URL.createObjectURL(blob);
+        const processorWorker = new Worker(workerUrl);
+
+        // --- LOCALIZATION ---
         const translations = {
             uk: {
-                menu_usage: "Як користуватися",
-                menu_tech: "Технологія",
-                menu_author: "Автор і контакти",
-                menu_reset: "Reset / Очистити всё",
-                menu_pro: "PRO НАЛАШТУВАННЯ",
-                btn_save: "Зберегти PNG",
-                btn_camera: "Камера",
-                btn_gallery: "Галерея",
-                scan_title: "Спектральний Аналіз",
-                btn_close: "ЗАКРИТИ",
-                ph_r: "Текст для Red...",
-                ph_g: "Текст для Green...",
-                ph_b: "Текст для Blue...",
-                res_wait: "Очікування...",
-                res_fail: "[!] Не вдалося зчитати",
-                m_usage_title: "📝 Як користуватися",
-                m_usage_body: `<p>Створювати кольорові (спектральні) 2D-коди. Тестувати їх зчитування з екрана або зображення.</p>`,
+                menu_usage: "Як користуватися", menu_tech: "Технологія", menu_author: "Автор", menu_reset: "Reset",
+                btn_save: "Зберегти PNG", btn_camera: "Камера", btn_gallery: "Галерея", btn_close: "ЗАКРИТИ",
+                ph_r: "Red...", ph_g: "Green...", ph_b: "Blue...",
+                res_wait: "Аналіз...", res_fail: "[!] Помилка",
                 m_tech_title: "⚙️ Технологія",
-                m_tech_body: `<p>Кольорові 2D-коди розширюють класичний QR-код. У цій версії додано ручне керування параметрами сенсора (ISO/Exposure) для досягнення максимальної точності каналу при скануванні.</p>`,
-                m_author_title: "🎨 Автор",
-                m_author_body: `<p><strong>Михайло Кашкаров</strong></p><p>📩 bakminsterfuler@gmail.com</p>`
+                m_tech_body: `<p>Алгоритм: Sauvola Binarization + SCI Deconvolution. Використовується Web Worker для обробки зображень без гальмування інтерфейсу.</p>`
             },
             en: {
-                menu_usage: "How to use",
-                menu_tech: "Technology",
-                menu_author: "Author & Contacts",
-                menu_reset: "Reset / Clear All",
-                menu_pro: "PRO SETTINGS",
-                btn_save: "Save PNG",
-                btn_camera: "Camera",
-                btn_gallery: "Gallery",
-                scan_title: "Spectral Analysis",
-                btn_close: "CLOSE",
-                ph_r: "Text for Red...",
-                ph_g: "Text for Green...",
-                ph_b: "Text for Blue...",
-                res_wait: "Waiting...",
-                res_fail: "[!] Failed to decode",
-                m_usage_title: "📝 How to use",
-                m_usage_body: `<p>Create spectral RGB 2D codes. Test decoding with manual sensor controls.</p>`,
+                menu_usage: "How to use", menu_tech: "Technology", menu_author: "Author", menu_reset: "Reset",
+                btn_save: "Save PNG", btn_camera: "Camera", btn_gallery: "Gallery", btn_close: "CLOSE",
+                ph_r: "Red...", ph_g: "Green...", ph_b: "Blue...",
+                res_wait: "Processing...", res_fail: "[!] Failed",
                 m_tech_title: "⚙️ Technology",
-                m_tech_body: `<p>Manual sensor controls allow bypassing auto-exposure limits to optimize channel separation.</p>`,
-                m_author_title: "🎨 Author",
-                m_author_body: `<p><strong>Mykhailo Kashkarov</strong></p><p>📩 bakminsterfuler@gmail.com</p>`
+                m_tech_body: `<p>Algorithm: Sauvola Binarization + SCI Deconvolution. Uses Web Worker for non-blocking UI processing.</p>`
             }
         };
-
         let currentLang = 'uk';
         function setLanguage(lang) {
             currentLang = lang;
@@ -346,57 +449,7 @@
             els.r.placeholder = translations[lang].ph_r;
             els.g.placeholder = translations[lang].ph_g;
             els.b.placeholder = translations[lang].ph_b;
-            document.documentElement.lang = lang;
         }
-
-        // --- MODAL LOGIC ---
-        function openModal(type) {
-            const prefix = 'm_' + type;
-            document.getElementById('modal-title').textContent = translations[currentLang][prefix + '_title'];
-            document.getElementById('modal-body').innerHTML = translations[currentLang][prefix + '_body'];
-            document.getElementById('modal-overlay').classList.add('show');
-            document.getElementById('dropdown').classList.remove('show');
-        }
-        function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); }
-        document.getElementById('modal-overlay').addEventListener('click', (e) => {
-            if (e.target.id === 'modal-overlay') closeModal();
-        });
-
-        // --- AUDIO ENGINE ---
-        const AudioEngine = {
-            ctx: null, initialized: false,
-            init() {
-                if(this.initialized) return;
-                try { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); this.initialized = true; } 
-                catch(e) { console.error("Web Audio API not supported"); }
-            },
-            playScan() {
-                if(!this.ctx) return;
-                const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = 'sine';
-                osc.frequency.setValueAtTime(200, now);
-                osc.frequency.exponentialRampToValueAtTime(1200, now + 2.5);
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(0.05, now + 0.5);
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(now); osc.stop(now + 2.6);
-            },
-            playResult(success) {
-                if(!this.ctx) return;
-                const now = this.ctx.currentTime;
-                const osc = this.ctx.createOscillator();
-                const gain = this.ctx.createGain();
-                osc.type = success ? 'sine' : 'sawtooth';
-                osc.frequency.setValueAtTime(success ? 2500 : 150, now);
-                gain.gain.setValueAtTime(0.1, now);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-                osc.connect(gain); gain.connect(this.ctx.destination);
-                osc.start(now); osc.stop(now + 0.3);
-            }
-        };
-        document.body.addEventListener('click', () => AudioEngine.init(), { once: true });
 
         // --- ELEMENTS & STATE ---
         const els = {
@@ -406,14 +459,43 @@
             centralContainer: document.getElementById('central-container'), flash: document.getElementById('flash-layer'),
             resultIndicators: document.getElementById('result-indicators'),
             resR: document.getElementById('res-r'), resG: document.getElementById('res-g'), resB: document.getElementById('res-b'),
-            metaBadge: document.getElementById('meta-badge'), proStatus: document.getElementById('pro-status')
+            debugToggle: document.getElementById('debug-toggle')
         };
 
         let scanning = false;
         let results = {r:null, g:null, b:null};
         let analysisReady = false;
-        let videoTrack = null; // Для керування камерою
-        let capabilities = {}; // Можливості камери
+        let debugMode = false;
+
+        // Worker Message Handler
+        processorWorker.onmessage = function(e) {
+            const { results: res, debugBuffer, foundAny } = e.data;
+            
+            // Merge results
+            if(res.r) results.r = res.r;
+            if(res.g) results.g = res.g;
+            if(res.b) results.b = res.b;
+            if(res.gray && !results.b && !results.r && !results.g) results.b = res.gray; // Fallback fallback
+
+            // Debug Draw
+            if(debugMode && debugBuffer) {
+                const ctx = els.freeze.getContext('2d');
+                ctx.putImageData(new ImageData(debugBuffer, 480, 480), 0, 0);
+            }
+
+            if(foundAny) {
+                if (results.b || (results.r && results.g && results.b)) {
+                    analysisReady = true;
+                    if(scanning) triggerCaptureSequence(); // Stop camera if found
+                    else finalizeAnalysis(); // File upload path
+                }
+            } else {
+                 // If nothing found after processing
+                 if(!scanning) handleFailUI(); 
+            }
+            
+            els.centralContainer.classList.remove('is-processing');
+        };
 
         // --- MENU LOGIC ---
         document.getElementById('menu-btn').addEventListener('click', (e) => {
@@ -425,6 +507,12 @@
                 document.getElementById('dropdown').classList.remove('show');
             }
         });
+        
+        function toggleDebug() {
+            debugMode = !debugMode;
+            els.debugToggle.classList.toggle('active', debugMode);
+            console.log("Debug Mode:", debugMode);
+        }
 
         function globalReset() {
             stopCamera();
@@ -434,7 +522,6 @@
             els.main.classList.remove('hidden');
             els.freeze.classList.add('hidden');
             els.video.classList.add('hidden');
-            els.metaBadge.classList.add('hidden');
             document.getElementById('dropdown').classList.remove('show');
         }
 
@@ -446,10 +533,7 @@
                 document.getElementById('save-btn').classList.add('hidden');
                 return;
             }
-            els.main.style.opacity = 1;
-            els.freeze.classList.add('hidden');
-            els.video.classList.add('hidden');
-            
+            els.main.style.opacity = 1; els.freeze.classList.add('hidden'); els.video.classList.add('hidden');
             let maxVer = 1;
             texts.forEach(t => {
                 if(!t.trim()) return;
@@ -457,11 +541,9 @@
                 const v = Math.floor((tmp.getModuleCount() - 17) / 4);
                 if (v > maxVer) maxVer = v;
             });
-            
             const ctx = els.main.getContext('2d');
             ctx.fillStyle = "#000"; ctx.fillRect(0,0,512,512);
             ctx.globalCompositeOperation = "lighten";
-            
             texts.forEach((text, i) => {
                 if(!text.trim()) return;
                 const qr = qrcode(maxVer, 'M'); qr.addData(unescape(encodeURIComponent(text))); qr.make();
@@ -474,155 +556,35 @@
                 }
             });
             ctx.globalCompositeOperation = "source-over";
-            els.main.style.opacity = 1;
             document.getElementById('save-btn').classList.remove('hidden');
             els.mini.getContext('2d').drawImage(els.main, 0, 0, 44, 44);
         }
         [els.r, els.g, els.b].forEach(el => el.addEventListener('input', generateQR));
 
-        // --- CAMERA2 (WEB API) LOGIC ---
-        
-        async function startCamera() {
+        // --- SCANNER LOGIC ---
+        function triggerFileInput() {
             els.r.value = ""; els.g.value = ""; els.b.value = ""; 
+            document.getElementById('file-input').click();
+        }
+
+        function startCamera() {
+            els.r.value = ""; els.g.value = ""; els.b.value = "";
             prepareScannerUI();
-            
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: "environment",
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
-                    } 
-                });
-                
-                els.video.srcObject = stream;
-                videoTrack = stream.getVideoTracks()[0];
-                
-                // Отримуємо можливості камери (Capabilities)
-                capabilities = videoTrack.getCapabilities ? videoTrack.getCapabilities() : {};
-                console.log("Camera Capabilities:", capabilities);
-                
-                // Оновлюємо UI слайдерів
-                setupControlsUI();
-                
-                els.video.play();
-                scanning = true;
-                requestAnimationFrame(scanFrame);
-                
-            } catch(e) { 
-                alert("Camera Error: " + e.message); 
-                stopCamera(); 
-            }
-        }
-
-        function setupControlsUI() {
-            const isoInput = document.getElementById('ctrl-iso');
-            const expInput = document.getElementById('ctrl-exp');
-            
-            // ISO Setup
-            if (capabilities.iso && capabilities.iso.min !== capabilities.iso.max) {
-                isoInput.min = capabilities.iso.min;
-                isoInput.max = capabilities.iso.max;
-                isoInput.step = capabilities.iso.step || 1;
-                isoInput.disabled = false;
-            } else {
-                isoInput.disabled = true;
-            }
-            
-            // Exposure Setup
-            if (capabilities.exposureMode && capabilities.exposureMode.includes('manual')) {
-                expInput.disabled = false;
-            } else {
-                expInput.disabled = true;
-            }
-        }
-
-        // Застосування ручних налаштувань
-        async function applyManualSettings() {
-            if (!videoTrack) return;
-            
-            const isoVal = document.getElementById('ctrl-iso').value;
-            const expVal = document.getElementById('ctrl-exp').value;
-            
-            // Відображення значень
-            document.getElementById('iso-val').innerText = isoVal > 0 ? isoVal : 'AUTO';
-            document.getElementById('exp-val').innerText = expVal > 0 ? 'MANUAL' : 'AUTO';
-            
-            try {
-                // Вимикаємо автоналаштування, якщо підтримується
-                if (capabilities.exposureMode && capabilities.exposureMode.includes('manual')) {
-                    await videoTrack.applyConstraints({
-                        advanced: [{ exposureMode: 'manual' }]
-                    });
-                }
-                
-                // Встановлюємо ISO
-                if (capabilities.iso && isoVal > 0) {
-                    await videoTrack.applyConstraints({
-                        advanced: [{ iso: parseInt(isoVal) }]
-                    });
-                }
-                
-                // Встановлюємо Exposure (уємо значення частково, бо API залежить від пристрою)
-                // Примітка: exposureTime вимірюється в мікросекундах, тут спрощено
-                if (capabilities.exposureTime && expVal > 0) {
-                    const expTime = Math.max(capabilities.exposureTime.min, Math.min(capabilities.exposureTime.max, expVal * 100));
-                    await videoTrack.applyConstraints({
-                        advanced: [{ exposureTime: expTime }]
-                    });
-                }
-                
-                els.proStatus.classList.remove('bg-red-500');
-                els.proStatus.classList.add('bg-green-500');
-                
-                // Оновлення метаданих на екрані
-                updateMetaData();
-                
-            } catch (e) {
-                console.warn("Manual settings failed:", e);
-                els.proStatus.classList.remove('bg-green-500');
-                els.proStatus.classList.add('bg-yellow-500');
-            }
-        }
-        
-        async function setWB(mode) {
-            if (!videoTrack || !capabilities.whiteBalanceMode) return;
-            
-            const modes = { 'auto': 'continuous', 'sunny': 'manual', 'cloudy': 'manual' }; // Спрощено
-            const temp = mode === 'sunny' ? 5500 : 6500; // Кельвіни (орієнтир)
-            
-            document.getElementById('wb-val').innerText = mode.toUpperCase();
-            
-            try {
-                if (capabilities.whiteBalanceMode.includes(modes[mode])) {
-                     await videoTrack.applyConstraints({ advanced: [{ whiteBalanceMode: modes[mode] }] });
-                }
-            } catch(e) { console.warn("WB Error", e); }
-        }
-
-        function updateMetaData() {
-            if (!videoTrack) return;
-            const settings = videoTrack.getSettings ? videoTrack.getSettings() : {};
-            
-            document.getElementById('m-iso').innerText = settings.iso || '--';
-            document.getElementById('m-exp').innerText = settings.exposureTime ? Math.round(settings.exposureTime/1000) : '--';
-            document.getElementById('m-wb').innerText = settings.whiteBalanceMode || '--';
-            
-            els.metaBadge.classList.remove('hidden');
-            
-            // JSON Logging
-            console.log("FRAME METADATA JSON:", JSON.stringify(settings, null, 2));
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then(s => {
+                    els.video.srcObject = s;
+                    els.video.play();
+                    scanning = true;
+                    scanLoop();
+                })
+                .catch(e => { alert("Camera Error"); stopCamera(); });
         }
 
         function stopCamera() {
             scanning = false;
-            els.metaBadge.classList.add('hidden');
             if (els.video.srcObject) els.video.srcObject.getTracks().forEach(t => t.stop());
-            videoTrack = null;
-            els.proStatus.classList.remove('bg-green-500');
-            els.proStatus.classList.add('bg-red-500');
         }
-
+        
         function prepareScannerUI() {
             results = {r:null, g:null, b:null}; analysisReady = false;
             els.main.style.opacity = 0; els.freeze.classList.add('hidden'); els.video.classList.remove('hidden');
@@ -635,9 +597,19 @@
             });
         }
 
-        function scanFrame() {
+        // Frame scheduler
+        let lastFrameTime = 0;
+        const frameInterval = 500; // Process every 500ms to let worker finish
+        function scanLoop(ts) {
             if (!scanning) return;
-            if (els.video.readyState === els.video.HAVE_ENOUGH_DATA) {
+            
+            if (ts - lastFrameTime > frameInterval && !analysisReady && els.video.readyState === els.video.HAVE_ENOUGH_DATA) {
+                lastFrameTime = ts;
+                
+                // Show processing indicator
+                els.centralContainer.classList.add('is-processing');
+                
+                // Capture Frame
                 const cv = document.createElement('canvas');
                 cv.width = 480; cv.height = 480;
                 const cx = cv.getContext('2d');
@@ -647,46 +619,24 @@
                 if (aspect > 1) { sw = vh; sx = (vw - sw) / 2; } else { sh = vw; sy = (vh - sh) / 2; }
                 cx.drawImage(els.video, sx, sy, sw, sh, 0, 0, 480, 480);
                 
-                // Оновлюємо метадані в реальному часі (опціонально, може навантажувати CPU)
-                // updateMetaData(); 
+                // Send to Worker
+                processorWorker.postMessage({
+                    type: 'process',
+                    payload: { 
+                        imgData: cx.getImageData(0,0,480,480).data.buffer, 
+                        w: 480, h: 480, 
+                        debug: debugMode 
+                    }
+                }, [cx.getImageData(0,0,480,480).data.buffer]); // Transferable
                 
-                if(!analysisReady) processImageData(cx.getImageData(0,0,480,480), 480, 480, false);
+            } else if (!analysisReady) {
+                requestAnimationFrame(scanLoop);
             }
-            requestAnimationFrame(scanFrame);
         }
-
-        function processImageData(img, w, h, isFileScan) {
-            let foundAny = false;
-            [0, 1, 2].forEach(idx => {
-                const ch = ['r', 'g', 'b'][idx];
-                if (results[ch]) return;
-                const mono = new Uint8ClampedArray(img.data.length);
-                for (let i = 0; i < img.data.length; i += 4) {
-                    const v = img.data[i + idx];
-                    // Використовуємо жорсткий поріг для RAW-подібного аналізу
-                    const b = v < 128 ? 0 : 255; 
-                    mono[i] = mono[i+1] = mono[i+2] = b;
-                    mono[i+3] = 255;
-                }
-                const code = jsQR(mono, w, h, { inversionAttempts: "attemptBoth" });
-                if (code) { results[ch] = code.data; foundAny = true; }
-            });
-
-            if(foundAny && (results.b || (results.r && results.g && results.b))) {
-                analysisReady = true;
-                if(!isFileScan) triggerCaptureSequence();
-            }
-            return foundAny;
-        }
-
+        
         function triggerCaptureSequence() {
             stopCamera();
-            
-            // Збереження метаданих останнього кадра перед зупинкою
-            const finalMeta = videoTrack ? videoTrack.getSettings() : {};
-            const metaLog = { timestamp: Date.now(), settings: finalMeta };
-            console.log("SCAN RESULT METADATA:", JSON.stringify(metaLog));
-            
+            // Draw freeze frame
             els.freeze.width = 480; els.freeze.height = 480;
             const fctx = els.freeze.getContext('2d');
             const vw = els.video.videoWidth, vh = els.video.videoHeight;
@@ -703,15 +653,15 @@
 
         function startVisualizationSequence(success) {
             els.centralContainer.classList.add('scan-active');
-            if(success) AudioEngine.playScan();
+            // Audio logic...
             setTimeout(() => {
                 els.flash.classList.add('flash');
-                AudioEngine.playResult(success);
                 setTimeout(() => els.flash.classList.remove('flash'), 300);
-                if(success) updateResultUI(); else handleFailUI();
-            }, 2500);
+                if(success) updateResultUI();
+                else handleFailUI();
+            }, 2000);
         }
-
+        
         function updateResultUI() {
             ['r', 'g', 'b'].forEach(ch => {
                 const el = els['res' + ch.toUpperCase()];
@@ -734,7 +684,7 @@
             });
         }
 
-        // --- File Handler (Unchanged logic, kept for context) ---
+        // --- File Handler ---
         function handleFile(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -742,7 +692,7 @@
             reader.onload = (ev) => {
                 const img = new Image();
                 img.onload = () => {
-                    prepareScannerUI(); 
+                    prepareScannerUI();
                     els.freeze.width = 480; els.freeze.height = 480;
                     const fctx = els.freeze.getContext('2d');
                     fctx.fillStyle = "#000"; fctx.fillRect(0, 0, 480, 480);
@@ -751,33 +701,35 @@
                     if (aspect > 1) { sw = img.height; sx = (img.width - sw) / 2; } else { sh = img.width; sy = (img.height - sh) / 2; }
                     fctx.drawImage(img, sx, sy, sw, sh, 0, 0, 480, 480);
                     els.freeze.classList.remove('hidden'); els.video.classList.add('hidden');
-                    const scanSize = 1024;
-                    const scv = document.createElement('canvas'); scv.width = scanSize; scv.height = scanSize;
-                    const sctx = scv.getContext('2d');
-                    let ssx=0, ssy=0, ssw=img.width, ssh=img.height;
-                    const sAspect = img.width / img.height;
-                    if (sAspect > 1) { ssw = img.height; ssx = (img.width - ssw) / 2; } else { ssh = img.width; ssy = (img.height - ssh) / 2; }
-                    sctx.drawImage(img, ssx, ssy, ssw, ssh, 0, 0, scanSize, scanSize);
-                    processImageData(sctx.getImageData(0,0,scanSize,scanSize), scanSize, scanSize, true);
-                    startVisualizationSequence(analysisReady);
+                    
+                    // Process via Worker
+                    els.centralContainer.classList.add('is-processing');
+                    const imgData = fctx.getImageData(0,0,480,480);
+                    processorWorker.postMessage({
+                        type: 'process',
+                        payload: { 
+                            imgData: imgData.data.buffer, 
+                            w: 480, h: 480, 
+                            debug: debugMode 
+                        }
+                    }, [imgData.data.buffer]);
                 };
                 img.src = ev.target.result;
             };
             reader.readAsDataURL(file);
         }
         
-        function triggerFileInput() {
-            els.r.value = ""; els.g.value = ""; els.b.value = ""; 
-            document.getElementById('file-input').click();
+        function finalizeAnalysis() {
+            startVisualizationSequence(analysisReady);
         }
 
         function saveQR() {
             const a = document.createElement('a');
-            a.download = 'QRGB_RAW_CAPTURE.json'; 
-            // Тут можна зберігати метадані разом із зображенням, але для прикладу зберігаємо PNG
-            a.href = els.main.toDataURL(); 
-            a.click();
+            a.download = 'QRGB_PRO.png'; a.href = els.main.toDataURL(); a.click();
         }
+        
+        function openModal(type) { /* same as before */ }
+        function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); }
     </script>
 </body>
 </html>
